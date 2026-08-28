@@ -16,7 +16,7 @@ import { ClientInformationStep } from "./client-information-step";
 import { OrganizationIdentityStep } from "./organization-identity-step";
 import { UsersStep } from "./users-step";
 
-export function buildOnboardingSteps(record: OnboardingRecord): WizardStep[] {
+export function buildOnboardingSteps(record: OnboardingRecord, clientId: string): WizardStep[] {
   const clientInformation = record.steps["client-information"].data;
   const organizationIdentity = record.steps["organization-identity"].data;
   const users = record.steps.users.data;
@@ -79,9 +79,16 @@ export function buildOnboardingSteps(record: OnboardingRecord): WizardStep[] {
     defaultValues: {
       provider: "stripe",
       connected: bankingLegal.connected,
-      accountHolderName: bankingLegal.accountHolderName ?? "",
     },
-    render: ({ form }) => <BankingStep form={form} />,
+    render: ({ form }) => (
+      <BankingStep
+        form={form}
+        clientId={clientId}
+        clientEmail={clientInformation.adminEmail ?? ""}
+        organizationName={clientInformation.organizationName ?? ""}
+        stripeAccountId={bankingLegal.stripeAccountId}
+      />
+    ),
   };
 
   // Each step above is constructed with its own precise form-values type; the generic Wizard

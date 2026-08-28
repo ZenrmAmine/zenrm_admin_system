@@ -109,7 +109,7 @@ export function OnboardingWizardShell({ clientId }: OnboardingWizardShellProps) 
 
   return (
     <Wizard
-      steps={buildOnboardingSteps(record)}
+      steps={buildOnboardingSteps(record, clientId)}
       personaName={personaName}
       progress={record.progress}
       initialStepId={initialStepId}

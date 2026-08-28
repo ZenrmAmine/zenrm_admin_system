@@ -63,7 +63,6 @@ export type UsersStepInput = z.infer<typeof usersStepSchema>;
 export const bankingStepSchema = z.object({
   provider: z.literal("stripe"),
   connected: z.boolean(),
-  accountHolderName: z.string().optional(),
 });
 
 export type BankingStepInput = z.infer<typeof bankingStepSchema>;

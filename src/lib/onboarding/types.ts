@@ -31,8 +31,11 @@ export interface UsersStepData {
 
 export interface BankingLegalData {
   provider: "stripe";
+  // Derived from Stripe's own account `requirements` check — Stripe is the system of record for
+  // banking/legal data, so this record never stores individual field values, only this rollup and
+  // the account id needed to look the account back up.
   connected: boolean;
-  accountHolderName?: string;
+  stripeAccountId?: string;
 }
 
 export interface OnboardingRecord {

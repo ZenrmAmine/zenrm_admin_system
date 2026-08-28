@@ -13,6 +13,7 @@ export interface OnboardingStore {
   create(): Promise<OnboardingRecord>;
   get(clientId: string): Promise<OnboardingRecord | null>;
   upsertStep(clientId: string, stepId: OnboardingStepId, data: unknown): Promise<OnboardingRecord | null>;
+  setStripeAccountId(clientId: string, accountId: string): Promise<OnboardingRecord | null>;
 }
 
 type StepInput = {
@@ -63,6 +64,10 @@ function emptyRecord(clientId: string): OnboardingRecord {
  * merged into an `OnboardingRecord` — records only ever carry a `passwordIsSet` boolean. This is
  * plaintext storage suitable for a prototype only; a real backend integration must hash/store
  * credentials through the actual ZenRM auth system, not through this store.
+ *
+ * `stripeAccountId` (set via `setStripeAccountId`, outside the normal `upsertStep` flow since it's
+ * known before the Banking step is ever submitted) is subject to the same non-durable, single-
+ * process storage caveat as everything else here.
  */
 interface ClientPasswords {
   clientInformation?: string;
@@ -142,6 +147,18 @@ class InMemoryOnboardingStore implements OnboardingStore {
 
     record.steps[stepId].completed = isStepDataComplete(stepId, record);
     record.progress = computeProgress(record);
+    record.updatedAt = new Date().toISOString();
+
+    return record;
+  }
+
+  async setStripeAccountId(clientId: string, accountId: string): Promise<OnboardingRecord | null> {
+    const record = this.records.get(clientId);
+    if (!record) {
+      return null;
+    }
+
+    record.steps["banking-legal"].data.stripeAccountId = accountId;
     record.updatedAt = new Date().toISOString();
 
     return record;
