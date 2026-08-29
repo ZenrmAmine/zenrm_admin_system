@@ -11,6 +11,11 @@ interface ClientInformationStepProps {
   passwordIsSet: boolean;
 }
 
+function formatEinNumber(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 9);
+  return digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits;
+}
+
 export function ClientInformationStep({ form, passwordIsSet }: ClientInformationStepProps) {
   const { control } = form;
 
@@ -33,7 +38,13 @@ export function ClientInformationStep({ form, passwordIsSet }: ClientInformation
         render={({ field, fieldState }) => (
           <Field className="gap-1.5" data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor="einNumber">EIN Number</FieldLabel>
-            <Input {...field} id="einNumber" placeholder="12-3456789" aria-invalid={fieldState.invalid} />
+            <Input
+              {...field}
+              id="einNumber"
+              placeholder="12-3456789"
+              aria-invalid={fieldState.invalid}
+              onChange={(event) => field.onChange(formatEinNumber(event.target.value))}
+            />
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
           </Field>
         )}

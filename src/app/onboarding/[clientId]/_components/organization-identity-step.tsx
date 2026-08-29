@@ -35,8 +35,13 @@ export function OrganizationIdentityStep({ form }: OrganizationIdentityStepProps
         )}
       />
       <div className="grid gap-6 md:grid-cols-2">
-        <ColorPickerField control={control} name="mainColor" label="Main Color Code" placeholder="#14B8A6" />
-        <ColorPickerField control={control} name="secondaryColor" label="Secondary Color Code" placeholder="#8B5CF6" />
+        <ColorPickerField control={control} name="mainColor" label="Main Brand Color Code" placeholder="#14B8A6" />
+        <ColorPickerField
+          control={control}
+          name="secondaryColor"
+          label="Secondary Brand Color Code"
+          placeholder="#8B5CF6"
+        />
       </div>
     </FieldGroup>
   );

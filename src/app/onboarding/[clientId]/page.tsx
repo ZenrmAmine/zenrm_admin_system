@@ -1,4 +1,4 @@
-import { isUuid } from "@/lib/onboarding/uuid";
+import { isClientId } from "@/lib/onboarding/client-id";
 
 import { OnboardingError } from "./_components/onboarding-error";
 import { OnboardingWizardShell } from "./_components/onboarding-wizard-shell";
@@ -7,9 +7,9 @@ export default async function OnboardingPage({ params }: { params: Promise<{ cli
   const { clientId } = await params;
 
   // Short-circuits obviously malformed IDs without a network round trip. A well-formed but
-  // unknown UUID still reaches the client shell, which shows the same generic error after the
+  // unknown clientId still reaches the client shell, which shows the same generic error after the
   // GET call 404s — so a visitor can never tell "malformed" from "doesn't exist" either way.
-  if (!isUuid(clientId)) {
+  if (!isClientId(clientId)) {
     return <OnboardingError />;
   }
 

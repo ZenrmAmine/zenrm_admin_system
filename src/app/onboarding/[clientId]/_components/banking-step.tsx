@@ -11,6 +11,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { createEmbeddedAccountSession, fetchBackendClient, patchBackendClient } from "@/lib/onboarding/backend-client";
+import { buildStripeSessionPatch, toOnboardingRecord } from "@/lib/onboarding/backend-mapping";
 import type { BankingStepInput } from "@/lib/onboarding/schemas";
 import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
@@ -36,18 +38,19 @@ function appearanceFor(mode: "light" | "dark"): AppearanceOptions {
   };
 }
 
-interface StripeStatusResponse {
-  hasAccount: boolean;
+interface BankingStatus {
   complete: boolean;
-  error?: string;
 }
 
 // Stripe is the system of record for banking/legal data — this component never collects or
-// stores individual field values (account holder name, country, etc.) beyond the account id and
-// a derived `connected` rollup. On mount it either starts a brand-new account (fixed
-// country/business type/currency defaults, since those aren't collected here — see
-// stripe-session/route.ts) or, for a returning client, checks the existing account's real
-// `requirements` before deciding whether to show a completion summary or resume the embedded flow.
+// stores individual field values (account holder name, country, etc.) beyond the account id, the
+// last session's clientSecret, and a derived `connected` rollup (fixed country/business type/
+// currency defaults are used for account creation too, since those aren't collected here — see
+// fetchClientSecret below). On mount it either starts a brand-new account or, for a returning
+// client, reads the last-persisted `connected` flag from the ZenRM backend before deciding whether
+// to show a completion summary or resume the embedded flow. That flag is only ever set true once a
+// Finish/Next submit has actually saved this step — see onboarding-wizard-shell.tsx's onSaveStep —
+// so this is a re-read of that same source, not a live check against Stripe's Accounts API.
 export function BankingStep({ form, clientId, clientEmail, organizationName, stripeAccountId }: BankingStepProps) {
   const { setValue } = form;
   const resolvedThemeMode = usePreferencesStore((state) => state.resolvedThemeMode);
@@ -58,33 +61,53 @@ export function BankingStep({ form, clientId, clientEmail, organizationName, str
   const [isLoadingEmbed, setIsLoadingEmbed] = useState(false);
   const hasStartedRef = useRef(false);
 
-  async function checkStatus(): Promise<StripeStatusResponse> {
-    const response = await fetch(`/api/onboarding/${clientId}/stripe-status`);
-    const body = (await response.json()) as StripeStatusResponse;
-    if (!response.ok) {
-      throw new Error(body.error ?? "Unable to check the Stripe account's status.");
+  async function checkStatus(): Promise<BankingStatus> {
+    const backend = await fetchBackendClient(clientId);
+    if (!backend) {
+      throw new Error("Onboarding link is invalid or has expired.");
     }
-    return body;
+    return { complete: toOnboardingRecord(backend).steps["banking-legal"].data.connected };
   }
 
-  // Also used by Connect.js itself for its own internal session refreshes, so every fetch — the
-  // first one and any later ones — goes through the same route and gets the same fresh data.
+  // Also used by Connect.js itself for its own internal session refreshes, so every call — the
+  // first one and any later ones — re-reads the backend record first and reuses a cached
+  // clientSecret when one is already there, only creating a new Stripe session when there isn't.
   async function fetchClientSecret(): Promise<string> {
-    const response = await fetch(`/api/onboarding/${clientId}/stripe-session`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: clientEmail, displayName: organizationName }),
-    });
-
-    const body = (await response.json()) as { clientSecret?: string; error?: string };
-    if (!response.ok || !body.clientSecret) {
-      throw new Error(body.error ?? "Unable to start the Stripe onboarding session.");
+    const backend = await fetchBackendClient(clientId);
+    if (!backend) {
+      throw new Error("Onboarding link is invalid or has expired.");
     }
 
-    return body.clientSecret;
+    const cached = toOnboardingRecord(backend).steps["banking-legal"].data.clientSecret;
+    if (cached) {
+      return cached;
+    }
+
+    const { accountId, clientSecret } = await createEmbeddedAccountSession(clientId, clientEmail, organizationName);
+
+    try {
+      await patchBackendClient(clientId, buildStripeSessionPatch(accountId, clientSecret, backend));
+    } catch (error) {
+      // Non-fatal — the Stripe account session itself succeeded and is returned below either way;
+      // failing to persist it just means the next call re-creates a session instead of reusing it.
+      console.error(`Failed to persist Stripe session for ${clientId}`, error);
+    }
+
+    return clientSecret;
   }
 
   function startEmbeddedOnboarding() {
+    // fetchClientSecret is invoked internally by Connect.js, outside any try/catch of ours, so a
+    // request it makes with blank fields would surface as an unhandled promise rejection instead
+    // of an in-UI error. Catch the missing-data case here instead of letting that happen.
+    if (!clientEmail || !organizationName) {
+      setPhase("error");
+      setErrorMessage(
+        "Complete the Client Information step first — an admin email and organization name are required.",
+      );
+      return;
+    }
+
     const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
     if (!publishableKey) {
       // Stripe's own SDK throws this asynchronously (outside any try/catch here) when given an

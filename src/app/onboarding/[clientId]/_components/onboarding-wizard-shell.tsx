@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Wizard } from "@/components/wizard/wizard";
 import type { WizardSaveResult } from "@/components/wizard/wizard-types";
+import { fetchBackendClient, patchBackendClient } from "@/lib/onboarding/backend-client";
+import { buildStepPatch, toOnboardingRecord } from "@/lib/onboarding/backend-mapping";
 import { STEP_ORDER } from "@/lib/onboarding/progress";
-import type { OnboardingRecord } from "@/lib/onboarding/types";
+import type { OnboardingRecord, OnboardingStepId } from "@/lib/onboarding/types";
 
 import { OnboardingError } from "./onboarding-error";
 import { buildOnboardingSteps } from "./steps";
@@ -23,14 +25,15 @@ export function OnboardingWizardShell({ clientId }: OnboardingWizardShellProps) 
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`/api/onboarding/${clientId}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Not found");
-        const body = (await response.json()) as { record: OnboardingRecord };
-        if (!cancelled) {
-          setRecord(body.record);
-          setStatus("ready");
+    fetchBackendClient(clientId)
+      .then((backend) => {
+        if (cancelled) return;
+        if (!backend) {
+          setStatus("error");
+          return;
         }
+        setRecord(toOnboardingRecord(backend));
+        setStatus("ready");
       })
       .catch(() => {
         if (!cancelled) setStatus("error");
@@ -91,20 +94,18 @@ export function OnboardingWizardShell({ clientId }: OnboardingWizardShellProps) 
   const personaName = record.steps["client-information"].data.adminName || "New client";
 
   async function handleSaveStep(stepId: string, data: unknown): Promise<WizardSaveResult> {
-    const response = await fetch(`/api/onboarding/${clientId}/step`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stepId, data }),
-    });
+    try {
+      const current = await fetchBackendClient(clientId);
+      if (!current) {
+        return { ok: false, error: "Onboarding link is invalid or has expired." };
+      }
 
-    const body = (await response.json()) as { record?: OnboardingRecord; error?: string };
-
-    if (!response.ok || !body.record) {
-      return { ok: false, error: body.error ?? "Unable to save this step." };
+      const updated = await patchBackendClient(clientId, buildStepPatch(stepId as OnboardingStepId, data, current));
+      setRecord(toOnboardingRecord(updated));
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Unable to save this step." };
     }
-
-    setRecord(body.record);
-    return { ok: true };
   }
 
   return (
