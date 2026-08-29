@@ -137,7 +137,6 @@ function readBankingLegal(
     provider: "stripe",
     connected: data.connected === true,
     stripeAccountId: stringField(data.stripeAccountId) ?? backend.stripe_account_id ?? undefined,
-    clientSecret: stringField(data.clientSecret),
   };
 }
 
@@ -220,7 +219,6 @@ export function buildStepPatch(
       onboardingData.bankingLegal = {
         connected: input.connected,
         stripeAccountId: existing.stripeAccountId,
-        clientSecret: existing.clientSecret,
       };
       break;
     }
@@ -229,17 +227,14 @@ export function buildStepPatch(
   return onboardingData;
 }
 
-// Persists the result of createEmbeddedAccountSession so a returning client's fetchClientSecret
-// can reuse the cached clientSecret (see banking-step.tsx) instead of creating a new Stripe session.
-export function buildStripeSessionPatch(
-  accountId: string,
-  clientSecret: string,
-  current: BackendClientRecord,
-): Record<string, unknown> {
+// Persists only the Stripe account id from createEmbeddedAccountSession's result. The client secret
+// itself is never persisted — it's single-use and short-lived, so every call to fetchClientSecret
+// (see banking-step.tsx) must mint a fresh one rather than reuse a stored value.
+export function buildStripeSessionPatch(accountId: string, current: BackendClientRecord): Record<string, unknown> {
   const currentData = unwrapOnboardingData(current.onboarding_data ?? null);
   const onboardingData = { ...(currentData ?? {}) };
   delete onboardingData.onboarding_data;
   const existing = readBankingLegal(current, currentData);
-  onboardingData.bankingLegal = { connected: existing.connected, stripeAccountId: accountId, clientSecret };
+  onboardingData.bankingLegal = { connected: existing.connected, stripeAccountId: accountId };
   return onboardingData;
 }

@@ -100,8 +100,11 @@ export function OnboardingWizardShell({ clientId }: OnboardingWizardShellProps) 
         return { ok: false, error: "Onboarding link is invalid or has expired." };
       }
 
-      const updated = await patchBackendClient(clientId, buildStepPatch(stepId as OnboardingStepId, data, current));
-      setRecord(toOnboardingRecord(updated));
+      const onboardingData = await patchBackendClient(
+        clientId,
+        buildStepPatch(stepId as OnboardingStepId, data, current),
+      );
+      setRecord(toOnboardingRecord({ ...current, onboarding_data: onboardingData }));
       return { ok: true };
     } catch {
       return { ok: false, error: "Unable to save this step." };

@@ -1,4 +1,6 @@
-const BACKEND_BASE_URL = "https://test.zenrm.co";
+import { isAxiosError } from "axios";
+
+import { apiClient, extractErrorMessage } from "@/lib/api-client";
 
 export interface BackendClientRecord {
   name: string | null;
@@ -13,62 +15,45 @@ export interface BackendClientRecord {
   crm_provider: string | null;
 }
 
-function errorMessageFrom(parsed: unknown, text: string): string {
-  if (typeof parsed === "object" && parsed && "message" in parsed) {
-    return String((parsed as { message?: string }).message);
-  }
-  if (typeof parsed === "object" && parsed && "error" in parsed) {
-    return String((parsed as { error?: string }).error);
-  }
-  return text || "The ZenRM client request failed.";
-}
-
-async function parseJsonBody(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { raw: text };
-  }
-}
-
 // No Authorization header is attached here — this is called from the public, unauthenticated
 // onboarding page, so there's no ZenRM session token to forward the way src/app/api/zenrm/route.ts
 // does.
 export async function fetchBackendClient(clientId: string): Promise<BackendClientRecord | null> {
-  const response = await fetch(`${BACKEND_BASE_URL}/client/${clientId}`);
-
-  if (response.status === 404) {
-    return null;
+  try {
+    const { data } = await apiClient.get(`/client/${clientId}`);
+    return data as BackendClientRecord;
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    throw new Error(
+      extractErrorMessage(isAxiosError(error) ? error.response?.data : undefined, "The ZenRM client request failed.", [
+        "message",
+        "error",
+      ]),
+    );
   }
-
-  const parsed = await parseJsonBody(response);
-
-  if (!response.ok) {
-    throw new Error(errorMessageFrom(parsed, ""));
-  }
-
-  return parsed as BackendClientRecord;
 }
 
+// The backend responds to this PATCH with the new onboarding_data column value itself (the same
+// shape as buildStepPatch's return value), not a full client record — merge it back onto a
+// BackendClientRecord (e.g. the `current` fetched via fetchBackendClient) before passing it to
+// toOnboardingRecord.
 export async function patchBackendClient(
   clientId: string,
   patch: Record<string, unknown>,
-): Promise<BackendClientRecord> {
-  const response = await fetch(`${BACKEND_BASE_URL}/client/updateOnboardingData/${clientId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
-
-  const parsed = await parseJsonBody(response);
-
-  if (!response.ok) {
-    throw new Error(errorMessageFrom(parsed, ""));
+): Promise<Record<string, unknown>> {
+  try {
+    const { data } = await apiClient.patch(`/client/updateOnboardingData/${clientId}`, patch);
+    return data as Record<string, unknown>;
+  } catch (error) {
+    throw new Error(
+      extractErrorMessage(isAxiosError(error) ? error.response?.data : undefined, "The ZenRM client request failed.", [
+        "message",
+        "error",
+      ]),
+    );
   }
-
-  return parsed as BackendClientRecord;
 }
 
 export interface StripeSessionResult {
@@ -90,26 +75,28 @@ export async function createEmbeddedAccountSession(
   email: string,
   displayName: string,
 ): Promise<StripeSessionResult> {
-  const response = await fetch(`${BACKEND_BASE_URL}/salesforce/createEmbeddedAccountSession`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  let data: unknown;
+
+  try {
+    const response = await apiClient.post("/salesforce/createEmbeddedAccountSession", {
       clientId,
       email,
       displayName,
       country: DEFAULT_COUNTRY,
       businessType: DEFAULT_BUSINESS_TYPE,
       currency: DEFAULT_CURRENCY,
-    }),
-  });
-
-  const parsed = await parseJsonBody(response);
-
-  if (!response.ok) {
-    throw new Error(errorMessageFrom(parsed, ""));
+    });
+    data = response.data;
+  } catch (error) {
+    throw new Error(
+      extractErrorMessage(isAxiosError(error) ? error.response?.data : undefined, "The ZenRM client request failed.", [
+        "message",
+        "error",
+      ]),
+    );
   }
 
-  const { accountId, clientSecret } = parsed as { accountId?: string; clientSecret?: string };
+  const { accountId, clientSecret } = data as { accountId?: string; clientSecret?: string };
   if (!accountId || !clientSecret) {
     throw new Error("Stripe account session response was missing required fields.");
   }

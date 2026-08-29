@@ -43,10 +43,10 @@ interface BankingStatus {
 }
 
 // Stripe is the system of record for banking/legal data — this component never collects or
-// stores individual field values (account holder name, country, etc.) beyond the account id, the
-// last session's clientSecret, and a derived `connected` rollup (fixed country/business type/
-// currency defaults are used for account creation too, since those aren't collected here — see
-// fetchClientSecret below). On mount it either starts a brand-new account or, for a returning
+// stores individual field values (account holder name, country, etc.) beyond the account id and a
+// derived `connected` rollup (fixed country/business type/currency defaults are used for account
+// creation too, since those aren't collected here — see fetchClientSecret below). On mount it
+// either starts a brand-new account or, for a returning
 // client, reads the last-persisted `connected` flag from the ZenRM backend before deciding whether
 // to show a completion summary or resume the embedded flow. That flag is only ever set true once a
 // Finish/Next submit has actually saved this step — see onboarding-wizard-shell.tsx's onSaveStep —
@@ -70,27 +70,23 @@ export function BankingStep({ form, clientId, clientEmail, organizationName, str
   }
 
   // Also used by Connect.js itself for its own internal session refreshes, so every call — the
-  // first one and any later ones — re-reads the backend record first and reuses a cached
-  // clientSecret when one is already there, only creating a new Stripe session when there isn't.
+  // first one and any later ones — must mint a brand-new Stripe account session. Account session
+  // client secrets are single-use and short-lived; reusing a previously-issued one (e.g. one read
+  // back from the backend) fails with Stripe's "You tried to claim an expired account session."
   async function fetchClientSecret(): Promise<string> {
     const backend = await fetchBackendClient(clientId);
     if (!backend) {
       throw new Error("Onboarding link is invalid or has expired.");
     }
 
-    const cached = toOnboardingRecord(backend).steps["banking-legal"].data.clientSecret;
-    if (cached) {
-      return cached;
-    }
-
     const { accountId, clientSecret } = await createEmbeddedAccountSession(clientId, clientEmail, organizationName);
 
     try {
-      await patchBackendClient(clientId, buildStripeSessionPatch(accountId, clientSecret, backend));
+      await patchBackendClient(clientId, buildStripeSessionPatch(accountId, backend));
     } catch (error) {
       // Non-fatal — the Stripe account session itself succeeded and is returned below either way;
-      // failing to persist it just means the next call re-creates a session instead of reusing it.
-      console.error(`Failed to persist Stripe session for ${clientId}`, error);
+      // failing to persist just means the account id has to be re-derived from Stripe next time.
+      console.error(`Failed to persist Stripe account id for ${clientId}`, error);
     }
 
     return clientSecret;

@@ -36,9 +36,6 @@ export interface BankingLegalData {
   // the account id needed to look the account back up.
   connected: boolean;
   stripeAccountId?: string;
-  // The embedded account session secret from the last createEmbeddedAccountSession call, cached so
-  // a returning client's fetchClientSecret can reuse it instead of creating a new Stripe session.
-  clientSecret?: string;
 }
 
 export interface OnboardingRecord {
