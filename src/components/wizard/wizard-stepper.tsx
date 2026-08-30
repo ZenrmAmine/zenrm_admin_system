@@ -66,9 +66,9 @@ export function WizardStepper({ steps, activeStepId, completedStepIds, onStepCli
                 aria-hidden="true"
                 className={cn(
                   "h-1.5 flex-1 rounded-full transition-colors motion-safe:duration-500",
-                  (status === "completed" || status === "active") && "bg-teal-500",
-                  status === "upcoming" && "bg-violet-200 dark:bg-violet-900",
-                  status === "disabled" && "bg-violet-200/60 dark:bg-violet-900/60",
+                  status === "completed" && "bg-teal-500",
+                  (status === "active" || status === "upcoming") && "bg-purple-200 dark:bg-purple-900",
+                  status === "disabled" && "bg-purple-200/60 dark:bg-purple-900/60",
                 )}
               />
             );
@@ -97,24 +97,17 @@ export function WizardStepper({ steps, activeStepId, completedStepIds, onStepCli
               className={cn(
                 "flex h-14 min-w-0 flex-1 items-center justify-center gap-2.5 px-6 text-sm font-medium transition-colors motion-safe:duration-200",
                 !isFirst && "-ml-3.5",
-                status === "active" && "bg-teal-500 text-white",
                 status === "completed" && "bg-teal-600 text-white hover:bg-teal-600/90",
-                status === "upcoming" &&
-                  "cursor-pointer bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:hover:bg-violet-900",
+                (status === "active" || status === "upcoming") &&
+                  "cursor-pointer bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-900",
                 status === "disabled" &&
-                  "pointer-events-none cursor-not-allowed bg-violet-100/60 text-violet-700/60 dark:bg-violet-950/60 dark:text-violet-300/60",
+                  "pointer-events-none cursor-not-allowed bg-purple-100/60 text-purple-700/60 dark:bg-purple-950/60 dark:text-purple-300/60",
               )}
             >
               {status === "completed" ? (
                 <Check className="size-5 shrink-0" />
               ) : (
-                <span
-                  className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-full text-xs",
-                    status === "active" && "bg-white/25",
-                    (status === "upcoming" || status === "disabled") && "bg-violet-700/10 dark:bg-violet-300/10",
-                  )}
-                >
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-700/10 text-xs dark:bg-purple-300/10">
                   {index + 1}
                 </span>
               )}

@@ -26,7 +26,7 @@ export function buildOnboardingSteps(record: OnboardingRecord, clientId: string)
 
   const clientInformationStep: WizardStep<ClientInformationInput> = {
     id: "client-information",
-    label: "Client Information",
+    label: "Organization Information",
     description: "Tell us about your organization and set up the primary admin account.",
     schema: clientInformationSchema,
     defaultValues: {
@@ -34,6 +34,7 @@ export function buildOnboardingSteps(record: OnboardingRecord, clientId: string)
       einNumber: clientInformation.einNumber ?? "",
       adminName: clientInformation.adminName ?? "",
       adminEmail: clientInformation.adminEmail ?? "",
+      passwordIsSet: clientInformation.passwordIsSet,
       password: "",
       confirmPassword: "",
     },
@@ -56,14 +57,16 @@ export function buildOnboardingSteps(record: OnboardingRecord, clientId: string)
   const usersStep: WizardStep<UsersStepInput> = {
     id: "users",
     label: "Users",
-    description: "Invite teammates and guests. You can skip this and add people later.",
+    description: "Add employees and guest users who will have access to login and use ZenRaise",
     schema: usersStepSchema,
     defaultValues: {
       users: users.users.map((user) => ({
         id: user.id,
         name: user.name ?? "",
         email: user.email ?? "",
+        passwordIsSet: user.passwordIsSet,
         password: "",
+        confirmPassword: "",
         profile: user.profile ?? "employee",
         expirationDate: user.expirationDate ?? "",
       })),
@@ -73,7 +76,7 @@ export function buildOnboardingSteps(record: OnboardingRecord, clientId: string)
 
   const bankingLegalStep: WizardStep<BankingStepInput> = {
     id: "banking-legal",
-    label: "Banking & Legal Information",
+    label: "Stripe-Connect Onboarding",
     description: "Connect a payout account so you're ready to get paid.",
     schema: bankingStepSchema,
     defaultValues: {

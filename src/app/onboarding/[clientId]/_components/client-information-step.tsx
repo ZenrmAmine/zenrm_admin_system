@@ -6,6 +6,8 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import type { ClientInformationInput } from "@/lib/onboarding/schemas";
 
+import { PasswordInput } from "./password-input";
+
 interface ClientInformationStepProps {
   form: UseFormReturn<ClientInformationInput>;
   passwordIsSet: boolean;
@@ -54,7 +56,7 @@ export function ClientInformationStep({ form, passwordIsSet }: ClientInformation
         name="adminName"
         render={({ field, fieldState }) => (
           <Field className="gap-1.5" data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor="adminName">Admin/POC Name</FieldLabel>
+            <FieldLabel htmlFor="adminName">Admin / Authorized Representative Name</FieldLabel>
             <Input {...field} id="adminName" aria-invalid={fieldState.invalid} />
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
           </Field>
@@ -65,7 +67,7 @@ export function ClientInformationStep({ form, passwordIsSet }: ClientInformation
         name="adminEmail"
         render={({ field, fieldState }) => (
           <Field className="gap-1.5" data-invalid={fieldState.invalid}>
-            <FieldLabel htmlFor="adminEmail">Admin/POC Email</FieldLabel>
+            <FieldLabel htmlFor="adminEmail">Admin / Authorized Representative Email</FieldLabel>
             <Input {...field} id="adminEmail" type="email" aria-invalid={fieldState.invalid} />
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
           </Field>
@@ -78,10 +80,9 @@ export function ClientInformationStep({ form, passwordIsSet }: ClientInformation
           render={({ field, fieldState }) => (
             <Field className="gap-1.5" data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="password">Password</FieldLabel>
-              <Input
+              <PasswordInput
                 {...field}
                 id="password"
-                type="password"
                 autoComplete="new-password"
                 placeholder={passwordIsSet ? "•••••••• (saved)" : "Enter a password"}
                 aria-invalid={fieldState.invalid}
@@ -99,10 +100,9 @@ export function ClientInformationStep({ form, passwordIsSet }: ClientInformation
           render={({ field, fieldState }) => (
             <Field className="gap-1.5" data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="confirmPassword">Confirm Password</FieldLabel>
-              <Input
+              <PasswordInput
                 {...field}
                 id="confirmPassword"
-                type="password"
                 autoComplete="new-password"
                 aria-invalid={fieldState.invalid}
               />

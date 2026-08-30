@@ -11,6 +11,7 @@ import { buildStepPatch, toOnboardingRecord } from "@/lib/onboarding/backend-map
 import { STEP_ORDER } from "@/lib/onboarding/progress";
 import type { OnboardingRecord, OnboardingStepId } from "@/lib/onboarding/types";
 
+import { OnboardingComplete } from "./onboarding-complete";
 import { OnboardingError } from "./onboarding-error";
 import { buildOnboardingSteps } from "./steps";
 
@@ -21,6 +22,7 @@ interface OnboardingWizardShellProps {
 export function OnboardingWizardShell({ clientId }: OnboardingWizardShellProps) {
   const [record, setRecord] = useState<OnboardingRecord | null>(null);
   const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
+  const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +90,10 @@ export function OnboardingWizardShell({ clientId }: OnboardingWizardShellProps) 
     return <OnboardingError />;
   }
 
+  if (isComplete) {
+    return <OnboardingComplete />;
+  }
+
   const completedStepIds = STEP_ORDER.filter((stepId) => record.steps[stepId].completed);
   const initialStepId =
     STEP_ORDER.find((stepId) => !record.steps[stepId].completed) ?? STEP_ORDER[STEP_ORDER.length - 1];
@@ -119,6 +125,7 @@ export function OnboardingWizardShell({ clientId }: OnboardingWizardShellProps) 
       initialStepId={initialStepId}
       completedStepIds={completedStepIds}
       onSaveStep={handleSaveStep}
+      onComplete={() => setIsComplete(true)}
     />
   );
 }

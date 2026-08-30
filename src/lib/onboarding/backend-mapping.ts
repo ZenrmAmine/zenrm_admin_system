@@ -187,7 +187,7 @@ export function buildStepPatch(
   switch (stepId) {
     case "client-information": {
       const input = data as StepInput["client-information"];
-      const { password, confirmPassword: _confirmPassword, ...rest } = input;
+      const { password, confirmPassword: _confirmPassword, passwordIsSet: _passwordIsSet, ...rest } = input;
       const existing = readClientInformation(current, currentData);
       onboardingData.clientInformation = {
         ...rest,
@@ -208,7 +208,7 @@ export function buildStepPatch(
       const input = data as StepInput["users"];
       const existingPasswordFlags = new Map(readUsers(currentData).map((user) => [user.id, user.passwordIsSet]));
       onboardingData.users = input.users.map((user) => {
-        const { password, ...rest } = user;
+        const { password, confirmPassword: _confirmPassword, passwordIsSet: _passwordIsSet, ...rest } = user;
         return { ...rest, passwordIsSet: !!password || existingPasswordFlags.get(user.id) === true };
       });
       break;

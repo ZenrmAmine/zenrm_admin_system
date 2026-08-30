@@ -65,7 +65,15 @@ function WizardStepForm({ step, isFirstStep, isLastStep, onBack, onNext }: Wizar
   );
 }
 
-export function Wizard({ steps, personaName, progress, initialStepId, completedStepIds, onSaveStep }: WizardProps) {
+export function Wizard({
+  steps,
+  personaName,
+  progress,
+  initialStepId,
+  completedStepIds,
+  onSaveStep,
+  onComplete,
+}: WizardProps) {
   const [activeStepId, setActiveStepId] = useState(initialStepId ?? steps[0]?.id);
   const activeIndex = Math.max(
     0,
@@ -83,6 +91,8 @@ export function Wizard({ steps, personaName, progress, initialStepId, completedS
     const nextStep = steps[activeIndex + 1];
     if (nextStep) {
       setActiveStepId(nextStep.id);
+    } else if (onComplete) {
+      onComplete();
     } else {
       toast.success("Onboarding complete.");
     }

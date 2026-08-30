@@ -30,4 +30,5 @@ export interface WizardProps {
   initialStepId?: string;
   completedStepIds: string[];
   onSaveStep: (stepId: string, data: unknown) => Promise<WizardSaveResult>;
+  onComplete?: () => void;
 }

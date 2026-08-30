@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { UsersStepInput } from "@/lib/onboarding/schemas";
 
 import { ExpirationDateField } from "./expiration-date-field";
+import { PasswordInput } from "./password-input";
 
 interface UsersStepProps {
   form: { control: Control<UsersStepInput> };
@@ -29,10 +30,14 @@ export function UsersStep({ form, existingPasswordFlags }: UsersStepProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      <p className="text-sm font-bold">
+        You can add your employees and guests now to give them access, or you can do it at anytime later from your
+        dashboard.
+      </p>
+
       {fields.length === 0 && (
         <div className="flex flex-col items-center gap-1 rounded-xl border border-dashed py-8 text-center">
           <p className="text-sm font-medium">No additional users yet</p>
-          <p className="text-sm text-muted-foreground">You can add them now or skip this step.</p>
         </div>
       )}
 
@@ -55,7 +60,9 @@ export function UsersStep({ form, existingPasswordFlags }: UsersStepProps) {
             id: crypto.randomUUID(),
             name: "",
             email: "",
+            passwordIsSet: false,
             password: "",
+            confirmPassword: "",
             profile: "employee",
             expirationDate: "",
           })
@@ -127,12 +134,27 @@ function UserRow({ control, index, passwordIsSet, onRemove }: UserRowProps) {
             render={({ field, fieldState }) => (
               <Field className="gap-1.5" data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor={`users.${index}.password`}>User Password</FieldLabel>
-                <Input
+                <PasswordInput
                   {...field}
                   id={`users.${index}.password`}
-                  type="password"
                   autoComplete="new-password"
                   placeholder={passwordIsSet ? "•••••••• (saved)" : "Enter a password"}
+                  aria-invalid={fieldState.invalid}
+                />
+                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name={`users.${index}.confirmPassword`}
+            render={({ field, fieldState }) => (
+              <Field className="gap-1.5" data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor={`users.${index}.confirmPassword`}>Confirm Password</FieldLabel>
+                <PasswordInput
+                  {...field}
+                  id={`users.${index}.confirmPassword`}
+                  autoComplete="new-password"
                   aria-invalid={fieldState.invalid}
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
