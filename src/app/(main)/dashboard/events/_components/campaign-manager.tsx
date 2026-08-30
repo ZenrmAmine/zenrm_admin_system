@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type ZenrmOption = { id: string; name: string };
+export type ZenrmOption = { id: string; name: string };
 type CampaignOperation = "createCampaign" | "createProgram" | "createCenter" | "linkPrograms";
 
 async function requestZenrm(operation: CampaignOperation, payload: Record<string, unknown>) {
@@ -41,31 +41,6 @@ async function requestZenrm(operation: CampaignOperation, payload: Record<string
   return parsed;
 }
 
-async function requestZenrmList(operation: "listPrograms" | "listCenters"): Promise<ZenrmOption[]> {
-  const response = await fetch(`/api/zenrm?operation=${operation}`);
-  const payload = (await response.json()) as unknown;
-
-  if (!response.ok) {
-    throw new Error(
-      typeof payload === "object" && payload && "error" in payload ? String(payload.error) : "Unable to load options.",
-    );
-  }
-
-  const records = Array.isArray(payload)
-    ? payload
-    : typeof payload === "object" && payload
-      ? Object.values(payload).flatMap((value) => (Array.isArray(value) ? value : []))
-      : [];
-
-  return records.flatMap((record) => {
-    if (typeof record !== "object" || !record || !("id" in record)) return [];
-    const item = record as { id?: unknown; name?: unknown; title?: unknown };
-    return typeof item.id === "string"
-      ? [{ id: item.id, name: String(item.name ?? item.title ?? item.id) }]
-      : [];
-  });
-}
-
 function getCreatedCampaignId(payload: unknown): string | null {
   if (typeof payload !== "object" || !payload) return null;
   const record = payload as { id?: unknown; campaign_id?: unknown; data?: unknown };
@@ -74,7 +49,15 @@ function getCreatedCampaignId(payload: unknown): string | null {
   return getCreatedCampaignId(record.data);
 }
 
-export function CampaignManager() {
+export function CampaignManager({
+  initialPrograms,
+  initialCenters,
+  optionsStatus,
+}: {
+  initialPrograms: ZenrmOption[];
+  initialCenters: ZenrmOption[];
+  optionsStatus?: string;
+}) {
   const [campaignForm, setCampaignForm] = useState({
     name: "Amine Test",
     status: "active",
@@ -119,29 +102,8 @@ export function CampaignManager() {
     message: "",
     result: "",
   });
-  const [availablePrograms, setAvailablePrograms] = useState<ZenrmOption[]>([]);
-  const [availableCenters, setAvailableCenters] = useState<ZenrmOption[]>([]);
-  const [optionsStatus, setOptionsStatus] = useState("Loading programs and centers...");
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    Promise.all([requestZenrmList("listPrograms"), requestZenrmList("listCenters")])
-      .then(([programs, centers]) => {
-        if (!isCurrent) return;
-        setAvailablePrograms(programs);
-        setAvailableCenters(centers);
-        setOptionsStatus("");
-      })
-      .catch((error) => {
-        if (isCurrent) setOptionsStatus(error instanceof Error ? error.message : "Unable to load programs and centers.");
-      });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
-
+  const availablePrograms = initialPrograms;
+  const availableCenters = initialCenters;
   const handleCampaignSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 

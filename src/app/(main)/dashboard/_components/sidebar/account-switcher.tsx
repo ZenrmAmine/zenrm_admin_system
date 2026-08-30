@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+
+import { useRouter } from "next/navigation";
 
 import { BadgeCheck, Bell, Check, CreditCard, LogOut } from "lucide-react";
 
@@ -26,7 +28,20 @@ export function AccountSwitcher({
     readonly role: string;
   }>;
 }) {
+  const router = useRouter();
+  const [isLoggingOut, startLogout] = useTransition();
   const [activeUser, setActiveUser] = useState(users[0]);
+
+  const handleLogout = () => {
+    startLogout(async () => {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+
+      if (!response.ok) return;
+
+      router.replace("/auth/v2/login");
+      router.refresh();
+    });
+  };
 
   if (!activeUser) {
     return null;
@@ -84,9 +99,9 @@ export function AccountSwitcher({
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem disabled={isLoggingOut} onClick={handleLogout}>
           <LogOut />
-          Log out
+          {isLoggingOut ? "Logging out..." : "Log out"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -16,16 +16,10 @@ const BACKEND_URLS = {
 
 const READ_OPERATIONS = new Set<keyof typeof BACKEND_URLS>(["listPrograms", "listCenters"]);
 
-async function getBearerToken(): Promise<string | null> {
-  const token = (await getZenrmSessionToken())?.trim();
-  if (!token) return null;
-
-  return token.replace(/^Bearer\s+/i, "");
-}
-
 async function forwardRequest(request: Request, method: "GET" | "POST") {
-  const token = await getBearerToken();
-
+  const sessionToken = await getZenrmSessionToken();
+  const token = sessionToken?.trim().replace(/^Bearer\s+/i, "");
+  
   if (!token) {
     return NextResponse.json({ error: "No active session found. Please log in again." }, { status: 401 });
   }
