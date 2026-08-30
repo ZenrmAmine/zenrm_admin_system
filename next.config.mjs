@@ -13,6 +13,7 @@ const nextConfig = {
       },
     ];
   },
+  allowedDevOrigins: ["onboarding.zenrm.co"],
 };
 
 export default nextConfig;
