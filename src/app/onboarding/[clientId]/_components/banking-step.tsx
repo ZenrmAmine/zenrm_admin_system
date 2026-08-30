@@ -26,12 +26,24 @@ interface BankingStepProps {
 
 type Phase = "checking" | "embed" | "complete" | "error";
 
+// Connect.js has no selector/rules-based styling API (unlike Stripe Elements) — these variables
+// are the only lever for making Stripe's own step/section nav match the wizard's WizardStepper bar
+// above it (teal "completed" / purple "active" states, text-sm font-medium labels).
 function appearanceFor(mode: "light" | "dark"): AppearanceOptions {
   return {
     variables: {
-      colorPrimary: "#14b8a6",
+      colorPrimary: "#0d9488",
       colorBackground: mode === "dark" ? "#0a0a0a" : "#ffffff",
       colorText: mode === "dark" ? "#fafafa" : "#0a0a0a",
+      colorSecondaryText: mode === "dark" ? "#d8b4fe" : "#7e22ce",
+      offsetBackgroundColor: mode === "dark" ? "#3b0764" : "#f3e8ff",
+      badgeSuccessColorBackground: "#0d9488",
+      badgeSuccessColorText: "#ffffff",
+      badgeNeutralColorBackground: mode === "dark" ? "#3b0764" : "#f3e8ff",
+      badgeNeutralColorText: mode === "dark" ? "#d8b4fe" : "#7e22ce",
+      labelMdFontWeight: "500",
+      labelSmFontWeight: "500",
+      fontSizeBase: "14px",
       borderRadius: "12px",
       fontFamily: "inherit",
     },
