@@ -168,9 +168,11 @@ export function toOnboardingRecord(backend: BackendClientRecord): OnboardingReco
 /**
  * Builds the flat patch body for one step's save (becomes the new `onboarding_data` column value
  * verbatim — see the note above on why it must not be wrapped under an `onboarding_data` key).
- * Raw passwords are never included — there is no credential/auth-provisioning endpoint yet, so only
- * the derived `passwordIsSet` boolean is persisted, carried forward from whatever is already stored
- * on `current` when the step is saved again without a new password.
+ * There is no dedicated credential/auth-provisioning endpoint yet, so a raw password is persisted
+ * directly inside `clientInformation`/`users[]` in this same JSON blob when freshly provided and
+ * confirmed (`password === confirmPassword`), or carried forward from whatever is already stored on
+ * `current` when the step is saved again without a new password. `confirmPassword` itself is never
+ * persisted.
  */
 export function buildStepPatch(
   stepId: OnboardingStepId,
@@ -187,11 +189,15 @@ export function buildStepPatch(
   switch (stepId) {
     case "client-information": {
       const input = data as StepInput["client-information"];
-      const { password, confirmPassword: _confirmPassword, passwordIsSet: _passwordIsSet, ...rest } = input;
+      const { password, confirmPassword, passwordIsSet: _passwordIsSet, ...rest } = input;
       const existing = readClientInformation(current, currentData);
+      const existingRaw = readObject(currentData, "clientInformation");
+      const passwordProvided = !!password && password === confirmPassword;
+      const passwordToPersist = passwordProvided ? password : stringField(existingRaw.password);
       onboardingData.clientInformation = {
         ...rest,
-        passwordIsSet: !!password || existing.passwordIsSet,
+        ...(passwordToPersist !== undefined ? { password: passwordToPersist } : {}),
+        passwordIsSet: passwordProvided || existing.passwordIsSet,
       };
       break;
     }
@@ -207,9 +213,21 @@ export function buildStepPatch(
     case "users": {
       const input = data as StepInput["users"];
       const existingPasswordFlags = new Map(readUsers(currentData).map((user) => [user.id, user.passwordIsSet]));
+      const existingRawUsers = new Map(
+        (Array.isArray(currentData?.users) ? currentData.users : [])
+          .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
+          .map((entry) => [stringField(entry.id), entry]),
+      );
       onboardingData.users = input.users.map((user) => {
-        const { password, confirmPassword: _confirmPassword, passwordIsSet: _passwordIsSet, ...rest } = user;
-        return { ...rest, passwordIsSet: !!password || existingPasswordFlags.get(user.id) === true };
+        const { password, confirmPassword, passwordIsSet: _passwordIsSet, ...rest } = user;
+        const passwordProvided = !!password && password === confirmPassword;
+        const existingRaw = existingRawUsers.get(user.id);
+        const passwordToPersist = passwordProvided ? password : stringField(existingRaw?.password);
+        return {
+          ...rest,
+          ...(passwordToPersist !== undefined ? { password: passwordToPersist } : {}),
+          passwordIsSet: passwordProvided || existingPasswordFlags.get(user.id) === true,
+        };
       });
       break;
     }
