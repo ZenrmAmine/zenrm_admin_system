@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 import { WizardPersonaPanel } from "./wizard-persona-panel";
 import { WizardStepper } from "./wizard-stepper";
@@ -56,7 +57,11 @@ function WizardStepForm({ step, isFirstStep, isLastStep, onBack, onNext }: Wizar
         >
           Back
         </Button>
-        <Button type="submit" disabled={form.formState.isSubmitting} className="h-11 min-w-24 md:h-9">
+        <Button
+          type="submit"
+          disabled={form.formState.isSubmitting}
+          className={cn("h-11 min-w-24 md:h-9", isLastStep && "bg-teal-600 text-white hover:bg-teal-600/90")}
+        >
           {form.formState.isSubmitting && <Spinner className="size-4" />}
           {submitLabel(form.formState.isSubmitting, isLastStep)}
         </Button>

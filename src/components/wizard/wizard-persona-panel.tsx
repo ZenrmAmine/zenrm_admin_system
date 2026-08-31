@@ -31,7 +31,10 @@ export function WizardPersonaPanel({ personaName, progress }: WizardPersonaPanel
             <span className="text-sm text-muted-foreground">Onboarding progress</span>
             <span className="text-sm font-semibold tabular-nums">{progress}%</span>
           </div>
-          <Progress value={progress} className="motion-safe:[&>*]:duration-700" />
+          <Progress
+            value={progress}
+            className="motion-safe:[&>*]:duration-700 [&>[data-slot=progress-indicator]]:bg-teal-600"
+          />
         </div>
       </div>
 
@@ -42,7 +45,10 @@ export function WizardPersonaPanel({ personaName, progress }: WizardPersonaPanel
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="truncate text-sm font-medium">{personaName || "New client"}</span>
           <div className="flex items-center gap-2">
-            <Progress value={progress} className="flex-1 motion-safe:[&>*]:duration-700" />
+            <Progress
+              value={progress}
+              className="flex-1 motion-safe:[&>*]:duration-700 [&>[data-slot=progress-indicator]]:bg-teal-600"
+            />
             <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">{progress}%</span>
           </div>
         </div>

@@ -35,7 +35,7 @@ function appearanceFor(mode: "light" | "dark"): AppearanceOptions {
       colorPrimary: "#0d9488",
       colorBackground: mode === "dark" ? "#0a0a0a" : "#ffffff",
       colorText: mode === "dark" ? "#fafafa" : "#0a0a0a",
-      colorSecondaryText: mode === "dark" ? "#d8b4fe" : "#7e22ce",
+      colorSecondaryText: mode === "dark" ? "#fafafa" : "#0a0a0a",
       offsetBackgroundColor: mode === "dark" ? "#3b0764" : "#f3e8ff",
       badgeSuccessColorBackground: "#0d9488",
       badgeSuccessColorText: "#ffffff",
