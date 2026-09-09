@@ -28,6 +28,14 @@ export const THEME_PRESET_OPTIONS = [
     },
   },
   {
+    label: "Material 3",
+    value: "material-3",
+    primary: {
+      light: "#4e3d75",
+      dark: "#d0bcfd",
+    },
+  },
+  {
     label: "Soft Pop",
     value: "soft-pop",
     primary: {

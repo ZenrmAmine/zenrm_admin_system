@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { isAxiosError } from "axios";
+
+import { apiClient, extractErrorMessage } from "@/lib/api-client";
 import { ZENRM_SESSION_COOKIE } from "@/lib/auth/session";
 
 function findToken(payload: unknown): string | null {
@@ -9,14 +12,7 @@ function findToken(payload: unknown): string | null {
 
   const record = payload as Record<string, unknown>;
 
-  const tokenKeys = [
-    "token",
-    "access_token",
-    "accessToken",
-    "jwt",
-    "bearerToken",
-    "authToken",
-  ];
+  const tokenKeys = ["token", "access_token", "accessToken", "jwt", "bearerToken", "authToken"];
 
   for (const key of tokenKeys) {
     const value = record[key];
@@ -47,33 +43,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
   }
 
-  const response = await fetch("https://test.zenrm.co/auth/zenrm/login", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, password }),
-  });
+  let payload: unknown;
 
-  const text = await response.text();
-  let payload: unknown = {};
-
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = { raw: text };
-    }
-  }
-
-  if (!response.ok) {
-    return NextResponse.json(
-      {
-        error: typeof payload === "object" && payload && "detail" in payload ? String((payload as { detail?: string }).detail) : text || "Authentication failed.",
-      },
-      { status: response.status || 401 },
+  try {
+    const response = await apiClient.post(
+      "/auth/zenrm/login",
+      { email, password },
+      { headers: { Authorization: "Bearer" } },
     );
+    payload = response.data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      return NextResponse.json(
+        { error: extractErrorMessage(error.response.data, "Authentication failed.", ["detail"]) },
+        { status: error.response.status || 401 },
+      );
+    }
+    throw error;
   }
 
   const token = findToken(payload);

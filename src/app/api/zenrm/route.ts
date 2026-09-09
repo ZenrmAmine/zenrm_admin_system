@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 
+import { isAxiosError } from "axios";
+
+import { apiClient, extractErrorMessage } from "@/lib/api-client";
 import { getZenrmSessionToken } from "@/lib/auth/session";
 
 const BACKEND_URLS = {
-  listPrograms: "https://test.zenrm.co/program/zenrm/programs",
-  listCenters: "https://test.zenrm.co/center/zenrm/",
-  createCampaign: "https://test.zenrm.co/campaign/zenrm/entries/",
-  createProgram: "https://test.zenrm.co/program/zenrm/programs",
-  createCenter: "https://test.zenrm.co/center/zenrm/create",
-  linkPrograms: "https://test.zenrm.co/campaign/zenrm/linkprogramtocampaign",
+  listPrograms: "/program/zenrm/programs",
+  listCenters: "/center/zenrm/",
+  createCampaign: "/campaign/zenrm/entries/",
+  createProgram: "/program/zenrm/programs",
+  createCenter: "/center/zenrm/create",
+  linkPrograms: "/campaign/zenrm/linkprogramtocampaign",
 } as const;
 
 const READ_OPERATIONS = new Set<keyof typeof BACKEND_URLS>(["listPrograms", "listCenters"]);
@@ -44,18 +47,26 @@ async function forwardRequest(request: Request, method: "GET" | "POST") {
     return NextResponse.json({ error: "Unsupported ZenRM operation." }, { status: 400 });
   }
 
-  let response: Response;
-
   try {
-    response = await fetch(url, {
+    const response = await apiClient.request({
+      url,
       method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      ...(method === "POST" ? { body: JSON.stringify(payload) } : {}),
+      headers: { Authorization: `Bearer ${token}` },
+      ...(method === "POST" ? { data: payload } : {}),
     });
+
+    return NextResponse.json(response.data, { status: response.status });
   } catch (error) {
+    if (isAxiosError(error) && error.response) {
+      return NextResponse.json(
+        {
+          error: extractErrorMessage(error.response.data, "The ZenRM request failed.", ["detail", "message", "error"]),
+          details: error.response.data,
+        },
+        { status: error.response.status || 500 },
+      );
+    }
+
     return NextResponse.json(
       {
         error: `Unable to reach ZenRM for ${operation}.`,
@@ -65,36 +76,6 @@ async function forwardRequest(request: Request, method: "GET" | "POST") {
       { status: 502 },
     );
   }
-
-  const text = await response.text();
-  let parsed: unknown = {};
-
-  if (text) {
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = { raw: text };
-    }
-  }
-
-  if (!response.ok) {
-    return NextResponse.json(
-      {
-        error:
-          typeof parsed === "object" && parsed && "detail" in parsed
-            ? String((parsed as { detail?: string }).detail)
-            : typeof parsed === "object" && parsed && "message" in parsed
-              ? String((parsed as { message?: string }).message)
-              : typeof parsed === "object" && parsed && "error" in parsed
-                ? String((parsed as { error?: string }).error)
-                : text || "The ZenRM request failed.",
-        details: parsed,
-      },
-      { status: response.status || 500 },
-    );
-  }
-
-  return NextResponse.json(parsed, { status: response.status });
 }
 
 export async function GET(request: Request) {
