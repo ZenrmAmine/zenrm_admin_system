@@ -177,11 +177,11 @@ export const recentOrdersColumns: ColumnDef<OrderRow>[] = [
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
-          <DropdownMenuLabel>Order Actions</DropdownMenuLabel>
+          <DropdownMenuLabel>donation Actions</DropdownMenuLabel>
           <DropdownMenuGroup>
-            <DropdownMenuItem>View order</DropdownMenuItem>
+            <DropdownMenuItem>View donation</DropdownMenuItem>
             <DropdownMenuItem>Contact customer</DropdownMenuItem>
-            <DropdownMenuItem>Copy order ID</DropdownMenuItem>
+            <DropdownMenuItem>Copy donation ID</DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
