@@ -23,13 +23,13 @@ export function WizardPersonaPanel({ personaName, progress }: WizardPersonaPanel
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col gap-1">
-          <span className="text-lg font-medium">{personaName || "New client"}</span>
-          <span className="text-sm text-muted-foreground">Client admin</span>
+          <span className="font-medium text-lg">{personaName || "New client"}</span>
+          <span className="text-muted-foreground text-sm">Client admin</span>
         </div>
         <div className="flex flex-col gap-2.5">
           <div className="flex items-baseline justify-between">
-            <span className="text-sm text-muted-foreground">Onboarding progress</span>
-            <span className="text-sm font-semibold tabular-nums">{progress}%</span>
+            <span className="text-muted-foreground text-sm">Onboarding progress</span>
+            <span className="font-semibold text-sm tabular-nums">{progress}%</span>
           </div>
           <Progress
             value={progress}
@@ -43,13 +43,13 @@ export function WizardPersonaPanel({ personaName, progress }: WizardPersonaPanel
           <AvatarFallback>{personaName ? getInitials(personaName) : <User className="size-4" />}</AvatarFallback>
         </Avatar>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="truncate text-sm font-medium">{personaName || "New client"}</span>
+          <span className="truncate font-medium text-sm">{personaName || "New client"}</span>
           <div className="flex items-center gap-2">
             <Progress
               value={progress}
               className="flex-1 motion-safe:[&>*]:duration-700 [&>[data-slot=progress-indicator]]:bg-teal-600"
             />
-            <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">{progress}%</span>
+            <span className="shrink-0 font-semibold text-muted-foreground text-xs tabular-nums">{progress}%</span>
           </div>
         </div>
       </div>

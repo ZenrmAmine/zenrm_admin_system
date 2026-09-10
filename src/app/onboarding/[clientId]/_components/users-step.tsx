@@ -30,14 +30,14 @@ export function UsersStep({ form, existingPasswordFlags }: UsersStepProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm font-bold">
+      <p className="font-bold text-sm">
         You can add your employees and guests now to give them access, or you can do it at anytime later from your
         dashboard.
       </p>
 
       {fields.length === 0 && (
         <div className="flex flex-col items-center gap-1 rounded-xl border border-dashed py-8 text-center">
-          <p className="text-sm font-medium">No additional users yet</p>
+          <p className="font-medium text-sm">No additional users yet</p>
         </div>
       )}
 
@@ -92,7 +92,7 @@ function UserRow({ control, index, passwordIsSet, onRemove }: UserRowProps) {
     <Card size="sm" className="shadow-sm">
       <CardContent className="flex flex-col gap-5">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">User {index + 1}</span>
+          <span className="font-medium text-muted-foreground text-sm">User {index + 1}</span>
           <Button
             type="button"
             variant="ghost"

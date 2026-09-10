@@ -28,16 +28,67 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import { recentOrdersColumns } from "./recent-orders-table/columns";
-import recentOrdersData from "./recent-orders-table/data.json";
 import {
   formatOrderCount,
   formatSelectedOrderCount,
   preventPaginationNavigation,
 } from "./recent-orders-table/formatters";
-import { type OrderFilter, type OrderRow, orderFilters } from "./recent-orders-table/schema";
+import type { OrderFilter, OrderRow } from "./recent-orders-table/schema";
+
+type DonationRecord = {
+  opportunity_id?: string;
+  id?: string;
+  donor_name?: string;
+  amount?: number | string | null;
+  stage_name?: string | null;
+  frequency?: string | null;
+  is_recurring?: boolean | null;
+  synced_with_crm?: boolean | null;
+  donation_source?: string | null;
+  close_date?: string | null;
+  created_at?: string | null;
+};
+
+function normalizeDonationList(value: unknown): DonationRecord[] {
+  if (Array.isArray(value)) {
+    return value.filter((record): record is DonationRecord => typeof record === "object" && record !== null);
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const container = value as Record<string, unknown>;
+
+    for (const key of ["data", "results", "items", "records", "donations"]) {
+      if (Array.isArray(container[key])) {
+        return container[key].filter(
+          (record): record is DonationRecord => typeof record === "object" && record !== null,
+        );
+      }
+    }
+  }
+
+  return [];
+}
+
+function mapDonationToOrder(row: DonationRecord): OrderRow | null {
+  const id = row.opportunity_id ?? row.id;
+
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id: String(id),
+    name: row.donor_name ?? "Unknown donor",
+    amount: Number(row.amount ?? 0),
+    stageName: row.stage_name ?? "Pending",
+    frequency: row.frequency ?? (row.is_recurring ? "Recurring" : "One-time"),
+    syncedWithSalesforce: Boolean(row.synced_with_crm),
+    donationSource: row.donation_source ?? "Unknown",
+    createdDate: row.close_date ?? row.created_at ?? new Date().toISOString(),
+  };
+}
 
 export function RecentOrders() {
   const [rowSelection, setRowSelection] = React.useState({});
@@ -50,13 +101,28 @@ export function RecentOrders() {
   const [recentOrders, setRecentOrders] = React.useState<OrderRow[]>([]);
 
   React.useEffect(() => {
-    fetch("https://test.mwlimits.org/donation/findAll")
-      .then((res) => res.json())
-      .then((data) => {
-        setRecentOrders(data);
+    fetch("/api/zenrm?operation=getDonation")
+      .then(async (response) => {
+        const payload = (await response.json()) as unknown;
+
+        if (!response.ok) {
+          const message =
+            typeof payload === "object" && payload !== null && "error" in payload && typeof payload.error === "string"
+              ? payload.error
+              : "Unable to load donations.";
+          throw new Error(message);
+        }
+
+        const rows = normalizeDonationList(payload)
+          .map(mapDonationToOrder)
+          .filter((row): row is OrderRow => row !== null);
+
+        setRecentOrders(rows);
+        console.log("Fetched donations:", rows);
       })
       .catch((error) => {
         console.error("Failed to fetch donations:", error);
+        setRecentOrders([]);
       });
   }, []);
 
@@ -122,7 +188,8 @@ export function RecentOrders() {
 
       <CardContent className="flex flex-col gap-4 px-0">
         <div className="flex items-center justify-between px-4">
-          <ToggleGroup
+          <div />
+          {/* <ToggleGroup
             className="bg-muted p-0.75 text-muted-foreground **:data-[slot=toggle-group-item]:rounded-md **:data-[slot=toggle-group-item]:border **:data-[slot=toggle-group-item]:border-transparent **:data-[slot=toggle-group-item]:text-foreground/60 **:data-[slot=toggle-group-item]:hover:text-foreground [&_[data-slot=toggle-group-item][data-state=on]]:bg-background [&_[data-slot=toggle-group-item][data-state=on]]:text-foreground [&_[data-slot=toggle-group-item][data-state=on]]:shadow-sm dark:[&_[data-slot=toggle-group-item][data-state=on]]:border-input dark:[&_[data-slot=toggle-group-item][data-state=on]]:bg-input/30"
             onValueChange={(value) => {
               if (!value) return;
@@ -139,7 +206,7 @@ export function RecentOrders() {
                 {filter}
               </ToggleGroupItem>
             ))}
-          </ToggleGroup>
+          </ToggleGroup> */}
 
           <Button
             size="icon-sm"

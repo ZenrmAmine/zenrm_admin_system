@@ -191,7 +191,7 @@ export function BankingStep({ form, clientId, clientEmail, organizationName, str
 
   if (phase === "checking") {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm">
         <Spinner className="size-4" /> Checking your Stripe account...
       </div>
     );
@@ -202,8 +202,8 @@ export function BankingStep({ form, clientId, clientEmail, organizationName, str
       <div className="flex items-center gap-3 rounded-xl border border-dashed p-6">
         <CheckCircle2 className="size-5 shrink-0 text-teal-600 dark:text-teal-400" />
         <div className="flex flex-col gap-0.5">
-          <p className="text-sm font-medium">Banking info submitted</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="font-medium text-sm">Banking info submitted</p>
+          <p className="text-muted-foreground text-sm">
             Your Stripe account is connected and ready to receive payouts.
           </p>
         </div>
@@ -214,7 +214,7 @@ export function BankingStep({ form, clientId, clientEmail, organizationName, str
   if (phase === "error") {
     return (
       <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed p-6">
-        <p className="text-sm text-muted-foreground">{errorMessage ?? "Something went wrong."}</p>
+        <p className="text-muted-foreground text-sm">{errorMessage ?? "Something went wrong."}</p>
         <Button type="button" variant="outline" className="h-11 md:h-8" onClick={startEmbeddedOnboarding}>
           Try again
         </Button>
@@ -225,7 +225,7 @@ export function BankingStep({ form, clientId, clientEmail, organizationName, str
   return (
     <div className="flex flex-col gap-3">
       {isLoadingEmbed && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Spinner className="size-4" /> Loading Stripe onboarding...
         </div>
       )}

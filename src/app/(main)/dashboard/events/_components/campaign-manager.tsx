@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { CheckSquare, Plus, RefreshCw, Search, Square, X } from "lucide-react";
+import { toast } from "sonner";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ZenrmOption = { id: string; name: string };
@@ -33,7 +40,9 @@ async function requestZenrm(operation: CampaignOperation, payload: Record<string
 
   if (!response.ok) {
     const message =
-      typeof parsed === "object" && parsed && "error" in parsed ? String((parsed as { error?: string }).error) : text || "Request failed.";
+      typeof parsed === "object" && parsed && "error" in parsed
+        ? String((parsed as { error?: string }).error)
+        : text || "Request failed.";
 
     throw new Error(message);
   }
@@ -41,48 +50,108 @@ async function requestZenrm(operation: CampaignOperation, payload: Record<string
   return parsed;
 }
 
+function extractRecords(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
+  if (typeof payload !== "object" || payload === null) return [];
+
+  const record = payload as Record<string, unknown>;
+
+  // Check common container keys
+  for (const key of ["data", "programs", "centers", "results", "items", "records", "rows", "entries"]) {
+    const val = record[key];
+    if (Array.isArray(val)) return val;
+    if (typeof val === "object" && val !== null) {
+      for (const subKey of ["data", "programs", "centers", "results", "items", "records", "rows", "entries"]) {
+        const subVal = (val as Record<string, unknown>)[subKey];
+        if (Array.isArray(subVal)) return subVal;
+      }
+    }
+  }
+
+  // Fallback: search values for an array
+  for (const val of Object.values(record)) {
+    if (Array.isArray(val)) return val;
+  }
+
+  return [];
+}
+
+function extractZenrmOption(record: unknown): ZenrmOption | null {
+  if (typeof record !== "object" || record === null) return null;
+
+  const item = record as Record<string, unknown>;
+
+  const idCandidates = [
+    item.id,
+    item.program_id,
+    item.center_id,
+    item.campaign_id,
+    item.programId,
+    item.centerId,
+    item._id,
+    item.uuid,
+    item.code,
+  ];
+  const foundId = idCandidates.find((c) => (typeof c === "string" && c.trim().length > 0) || typeof c === "number");
+  if (foundId == null) return null;
+
+  const id = String(foundId).trim();
+
+  const nameCandidates = [
+    item.name,
+    item.program_name,
+    item.center_name,
+    item.campaign_name,
+    item.title,
+    item.programName,
+    item.centerName,
+    item.label,
+    item.description,
+  ];
+  const foundName = nameCandidates.find((c) => typeof c === "string" && c.trim().length > 0);
+  const name = foundName ? String(foundName).trim() : id;
+
+  return { id, name };
+}
+
 async function requestZenrmList(operation: "listPrograms" | "listCenters"): Promise<ZenrmOption[]> {
   const response = await fetch(`/api/zenrm?operation=${operation}`);
   const payload = (await response.json()) as unknown;
 
+  console.log(`[ZenRM API] ${operation} (status ${response.status}):`, payload);
+
   if (!response.ok) {
-    throw new Error(
-      typeof payload === "object" && payload && "error" in payload ? String(payload.error) : "Unable to load options.",
-    );
+    const errorMsg =
+      typeof payload === "object" && payload && "error" in payload
+        ? String((payload as { error?: string }).error)
+        : `Unable to load ${operation} (HTTP ${response.status}).`;
+    console.error(`[ZenRM API] ${operation} error:`, errorMsg, payload);
+    throw new Error(errorMsg);
   }
 
-  const records = Array.isArray(payload)
-    ? payload
-    : typeof payload === "object" && payload
-      ? Object.values(payload).flatMap((value) => (Array.isArray(value) ? value : []))
-      : [];
+  const rawRecords = extractRecords(payload);
+  const options = rawRecords.map(extractZenrmOption).filter((opt): opt is ZenrmOption => opt !== null);
 
-  return records.flatMap((record) => {
-    if (typeof record !== "object" || !record || !("id" in record)) return [];
-    const item = record as { id?: unknown; name?: unknown; title?: unknown };
-    return typeof item.id === "string"
-      ? [{ id: item.id, name: String(item.name ?? item.title ?? item.id) }]
-      : [];
-  });
-}
-
-function getCreatedCampaignId(payload: unknown): string | null {
-  if (typeof payload !== "object" || !payload) return null;
-  const record = payload as { id?: unknown; campaign_id?: unknown; data?: unknown };
-  if (typeof record.id === "string") return record.id;
-  if (typeof record.campaign_id === "string") return record.campaign_id;
-  return getCreatedCampaignId(record.data);
+  console.log(`[ZenRM API] ${operation} parsed options (${options.length}):`, options);
+  return options;
 }
 
 export function CampaignManager() {
   const [campaignForm, setCampaignForm] = useState({
-    name: "Amine Test",
+    name: "Amine Test with new changes",
     status: "active",
     center_id: "",
     program_ids: [] as string[],
-    owner_user_id: "36480f95-d500-4d12-a54f-3cf2567a5557",
+    spNationality: "Tunisian",
+    SpIsDefault: true,
+    startDate: "",
+    endDate: "",
     last_synced_from_crm_at: "",
   });
+  const [programSearch, setProgramSearch] = useState("");
+  const [manualProgramInput, setManualProgramInput] = useState("");
+  const [manualCenterEntry, setManualCenterEntry] = useState(false);
+
   const [programForm, setProgramForm] = useState({
     name: "Annual Giving",
     crm_id: "crm_12345",
@@ -119,34 +188,148 @@ export function CampaignManager() {
     message: "",
     result: "",
   });
+
   const [availablePrograms, setAvailablePrograms] = useState<ZenrmOption[]>([]);
   const [availableCenters, setAvailableCenters] = useState<ZenrmOption[]>([]);
-  const [optionsStatus, setOptionsStatus] = useState("Loading programs and centers...");
+  const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+  const [programsStatusMsg, setProgramsStatusMsg] = useState("");
+  const [centersStatusMsg, setCentersStatusMsg] = useState("");
+
+  const loadOptions = useCallback(async () => {
+    setIsLoadingOptions(true);
+    setProgramsStatusMsg("Fetching programs from database...");
+    setCentersStatusMsg("Fetching centers from database...");
+
+    const [programsResult, centersResult] = await Promise.allSettled([
+      requestZenrmList("listPrograms"),
+      requestZenrmList("listCenters"),
+    ]);
+
+    if (programsResult.status === "fulfilled") {
+      setAvailablePrograms(programsResult.value);
+      if (programsResult.value.length === 0) {
+        setProgramsStatusMsg("0 programs returned from database.");
+      } else {
+        setProgramsStatusMsg("");
+      }
+    } else {
+      const err = programsResult.reason instanceof Error ? programsResult.reason.message : "Failed to load programs.";
+      setProgramsStatusMsg(err);
+      toast.error(`Programs: ${err}`);
+    }
+
+    if (centersResult.status === "fulfilled") {
+      setAvailableCenters(centersResult.value);
+      if (centersResult.value.length === 0) {
+        setCentersStatusMsg("0 centers returned from database.");
+        setManualCenterEntry(true);
+      } else {
+        setCentersStatusMsg("");
+        setCampaignForm((current) => {
+          if (current.center_id) return current;
+          const preferred =
+            centersResult.value.find((c) => c.id === "af1b9803-84c7-47af-81a1-c6905c20d6c5") ?? centersResult.value[0];
+          return { ...current, center_id: preferred ? preferred.id : "" };
+        });
+      }
+    } else {
+      const err = centersResult.reason instanceof Error ? centersResult.reason.message : "Failed to load centers.";
+      setCentersStatusMsg(err);
+      setManualCenterEntry(true);
+      toast.error(`Centers: ${err}`);
+    }
+
+    setIsLoadingOptions(false);
+  }, []);
 
   useEffect(() => {
-    let isCurrent = true;
+    void loadOptions();
+  }, [loadOptions]);
 
-    Promise.all([requestZenrmList("listPrograms"), requestZenrmList("listCenters")])
-      .then(([programs, centers]) => {
-        if (!isCurrent) return;
-        setAvailablePrograms(programs);
-        setAvailableCenters(centers);
-        setOptionsStatus("");
-      })
-      .catch((error) => {
-        if (isCurrent) setOptionsStatus(error instanceof Error ? error.message : "Unable to load programs and centers.");
-      });
+  const filteredPrograms = useMemo(() => {
+    if (!programSearch.trim()) return availablePrograms;
+    const searchLower = programSearch.toLowerCase();
+    return availablePrograms.filter(
+      (program) => program.name.toLowerCase().includes(searchLower) || program.id.toLowerCase().includes(searchLower),
+    );
+  }, [availablePrograms, programSearch]);
 
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
+  const toggleProgram = (id: string) => {
+    setCampaignForm((current) => {
+      const exists = current.program_ids.includes(id);
+      return {
+        ...current,
+        program_ids: exists ? current.program_ids.filter((pId) => pId !== id) : [...current.program_ids, id],
+      };
+    });
+  };
+
+  const selectAllFilteredPrograms = () => {
+    const filteredIds = filteredPrograms.map((p) => p.id);
+    setCampaignForm((current) => ({
+      ...current,
+      program_ids: Array.from(new Set([...current.program_ids, ...filteredIds])),
+    }));
+  };
+
+  const clearSelectedPrograms = () => {
+    setCampaignForm((current) => ({
+      ...current,
+      program_ids: [],
+    }));
+  };
+
+  const addManualProgram = () => {
+    const trimmed = manualProgramInput.trim();
+    if (!trimmed) return;
+    const ids = trimmed
+      .split(/[,\s]+/)
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    setCampaignForm((current) => ({
+      ...current,
+      program_ids: Array.from(new Set([...current.program_ids, ...ids])),
+    }));
+    setManualProgramInput("");
+    toast.success(`Added ${ids.length} program ID(s).`);
+  };
+
+  const fillSampleCurlData = () => {
+    setCampaignForm((current) => ({
+      ...current,
+      name: "Amine Test with new changes",
+      status: "active",
+      center_id: "af1b9803-84c7-47af-81a1-c6905c20d6c5",
+      program_ids: ["20814529-ddff-4c37-a286-558265bfa6e9", "e3a8cc2d-ca5c-423c-8377-c437c162009d"],
+      spNationality: "Tunisian",
+      SpIsDefault: true,
+      startDate: "",
+      endDate: "",
+      last_synced_from_crm_at: "",
+    }));
+    setManualCenterEntry(true);
+    toast.info("Prefilled with curl sample IDs.");
+  };
 
   const handleCampaignSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!campaignForm.center_id || campaignForm.program_ids.length === 0) {
-      setCampaignStatus({ isLoading: false, message: "Choose one center and at least one program.", result: "" });
+    if (!campaignForm.name.trim()) {
+      toast.error("Please provide a campaign name.");
+      setCampaignStatus({ isLoading: false, message: "Campaign name is required.", result: "" });
+      return;
+    }
+
+    if (!campaignForm.center_id) {
+      toast.error("Please choose a center.");
+      setCampaignStatus({ isLoading: false, message: "Choose one center.", result: "" });
+      return;
+    }
+
+    if (campaignForm.program_ids.length === 0) {
+      toast.error("Please choose at least one program.");
+      setCampaignStatus({ isLoading: false, message: "Choose at least one program.", result: "" });
       return;
     }
 
@@ -154,33 +337,33 @@ export function CampaignManager() {
 
     try {
       const payload = {
-        name: campaignForm.name,
+        name: campaignForm.name.trim(),
         status: campaignForm.status,
-        last_synced_from_crm_at: campaignForm.last_synced_from_crm_at || null,
+        last_synced_from_crm_at: campaignForm.last_synced_from_crm_at
+          ? new Date(campaignForm.last_synced_from_crm_at).toISOString()
+          : null,
         center_id: campaignForm.center_id,
-        program_id: campaignForm.program_ids[0],
-        owner_user_id: campaignForm.owner_user_id,
+        program_id: campaignForm.program_ids,
+        spNationality: campaignForm.spNationality.trim() || "Tunisian",
+        SpIsDefault: Boolean(campaignForm.SpIsDefault),
+        startDate: campaignForm.startDate ? new Date(campaignForm.startDate).toISOString() : null,
+        endDate: campaignForm.endDate ? new Date(campaignForm.endDate).toISOString() : null,
       };
 
       const result = await requestZenrm("createCampaign", payload);
-      const campaignId = getCreatedCampaignId(result);
 
-      if (campaignId && campaignForm.program_ids.length > 1) {
-        await requestZenrm("linkPrograms", {
-          campaignId,
-          programIds: campaignForm.program_ids.slice(1),
-        });
-      }
-
+      toast.success("Campaign created successfully!");
       setCampaignStatus({
         isLoading: false,
         message: "Campaign created successfully.",
         result: JSON.stringify(result, null, 2),
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create campaign.";
+      toast.error(message);
       setCampaignStatus({
         isLoading: false,
-        message: error instanceof Error ? error.message : "Unable to create campaign.",
+        message,
         result: "",
       });
     }
@@ -273,18 +456,25 @@ export function CampaignManager() {
     }
   };
 
+  let centerPlaceholder = "Choose one center";
+  if (isLoadingOptions) {
+    centerPlaceholder = "Loading centers...";
+  } else if (availableCenters.length === 0) {
+    centerPlaceholder = "No centers found (enter manually)";
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="space-y-1">
         <h1 className="text-3xl tracking-tight">Campaigns & Programs</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Create campaigns, programs, and centers, then link programs to a campaign.
         </p>
       </div>
 
       <Card>
         <CardContent className="pt-4">
-          <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-muted-foreground text-sm">
             Authenticated with the backend session token. No manual bearer token is required here.
           </div>
         </CardContent>
@@ -295,103 +485,315 @@ export function CampaignManager() {
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="programs">Programs</TabsTrigger>
           <TabsTrigger value="centers">Centers</TabsTrigger>
-          <TabsTrigger value="links">Link programs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns">
           <Card>
             <CardHeader>
-              <CardTitle>Create campaign</CardTitle>
-              <CardDescription>Use the campaign API payload to create a campaign.</CardDescription>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle>Create campaign</CardTitle>
+                  <CardDescription>
+                    Configure campaign details, select the center, and assign one or more programs.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" size="xs" variant="outline" onClick={loadOptions} disabled={isLoadingOptions}>
+                    <RefreshCw className={`size-3.5 ${isLoadingOptions ? "animate-spin" : ""}`} />
+                    {isLoadingOptions ? "Fetching DB..." : "Reload from DB"}
+                  </Button>
+                  <Button type="button" size="xs" variant="secondary" onClick={fillSampleCurlData}>
+                    Fill sample IDs
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCampaignSubmit}>
+              <form className="grid gap-6 md:grid-cols-2" onSubmit={handleCampaignSubmit}>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Name</label>
+                  <Label htmlFor="campaign-name" className="mb-1.5 block font-medium text-sm">
+                    Campaign Name <span className="text-destructive">*</span>
+                  </Label>
                   <Input
+                    id="campaign-name"
                     value={campaignForm.name}
                     onChange={(event) => setCampaignForm((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="e.g. Amine Test with new changes"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Status</label>
-                  <Input
+                  <Label htmlFor="campaign-status" className="mb-1.5 block font-medium text-sm">
+                    Status
+                  </Label>
+                  <Select
                     value={campaignForm.status}
-                    onChange={(event) => setCampaignForm((current) => ({ ...current, status: event.target.value }))}
+                    onValueChange={(value) => setCampaignForm((current) => ({ ...current, status: value }))}
+                  >
+                    <SelectTrigger id="campaign-status" className="w-full">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <Label htmlFor="campaign-center" className="font-medium text-sm">
+                      Center <span className="text-destructive">*</span>
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => setManualCenterEntry((current) => !current)}
+                      className="text-primary text-xs hover:underline"
+                    >
+                      {manualCenterEntry ? "Select from list" : "Enter ID manually"}
+                    </button>
+                  </div>
+
+                  {manualCenterEntry ? (
+                    <Input
+                      id="campaign-center"
+                      value={campaignForm.center_id}
+                      onChange={(event) =>
+                        setCampaignForm((current) => ({ ...current, center_id: event.target.value }))
+                      }
+                      placeholder="e.g. af1b9803-84c7-47af-81a1-c6905c20d6c5"
+                      required
+                    />
+                  ) : (
+                    <Select
+                      value={campaignForm.center_id}
+                      onValueChange={(value) => setCampaignForm((current) => ({ ...current, center_id: value }))}
+                      disabled={availableCenters.length === 0}
+                    >
+                      <SelectTrigger id="campaign-center" className="w-full">
+                        <SelectValue placeholder={centerPlaceholder} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {availableCenters.map((center) => (
+                            <SelectItem key={center.id} value={center.id}>
+                              {center.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {centersStatusMsg ? <p className="mt-1 text-muted-foreground text-xs">{centersStatusMsg}</p> : null}
+                </div>
+
+                {/* Multi-program selection component */}
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label className="block font-medium text-sm">
+                      Select Programs <span className="text-destructive">*</span>
+                      <span className="ml-2 font-normal text-muted-foreground text-xs">
+                        ({campaignForm.program_ids.length} selected)
+                      </span>
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        onClick={selectAllFilteredPrograms}
+                        disabled={filteredPrograms.length === 0}
+                      >
+                        <CheckSquare className="size-3.5" />
+                        Select all
+                      </Button>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        onClick={clearSelectedPrograms}
+                        disabled={campaignForm.program_ids.length === 0}
+                      >
+                        <Square className="size-3.5" />
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Selected program badges */}
+                  {campaignForm.program_ids.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 rounded-lg border bg-muted/20 p-2">
+                      {campaignForm.program_ids.map((id) => {
+                        const prog = availablePrograms.find((p) => p.id === id);
+                        return (
+                          <Badge key={id} variant="secondary" className="flex items-center gap-1.5 py-1 pr-1.5 pl-2.5">
+                            <span className="max-w-[220px] truncate">{prog?.name ?? id}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleProgram(id)}
+                              className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              aria-label={`Remove ${prog?.name ?? id}`}
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Program search and scrollable checkbox list */}
+                  <div className="rounded-lg border bg-card p-3 shadow-xs">
+                    <div className="relative mb-2">
+                      <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+                      <Input
+                        value={programSearch}
+                        onChange={(e) => setProgramSearch(e.target.value)}
+                        placeholder="Search available programs by name or ID..."
+                        className="pl-8"
+                      />
+                    </div>
+
+                    <div className="max-h-52 divide-y overflow-y-auto rounded-md border">
+                      {filteredPrograms.length > 0 ? (
+                        filteredPrograms.map((program) => {
+                          const isSelected = campaignForm.program_ids.includes(program.id);
+                          return (
+                            <label
+                              key={program.id}
+                              htmlFor={`program-${program.id}`}
+                              className={`flex cursor-pointer items-center justify-between p-2.5 text-sm transition-colors hover:bg-muted/50 ${
+                                isSelected ? "bg-accent/40 font-medium" : ""
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 truncate">
+                                <Checkbox
+                                  id={`program-${program.id}`}
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleProgram(program.id)}
+                                  aria-label={program.name}
+                                />
+                                <span className="truncate">{program.name}</span>
+                              </div>
+                              <span className="font-mono text-muted-foreground text-xs">
+                                {program.id.slice(0, 8)}...
+                              </span>
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <div className="p-4 text-center text-muted-foreground text-sm">
+                          {isLoadingOptions
+                            ? "Loading programs from database..."
+                            : programsStatusMsg || "No programs found matching search."}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Manual Program ID input fallback */}
+                    <div className="mt-3 flex items-center gap-2 border-t pt-2.5">
+                      <Input
+                        value={manualProgramInput}
+                        onChange={(e) => setManualProgramInput(e.target.value)}
+                        placeholder="Or paste Program UUID manually (e.g. 20814529-ddff-...)"
+                        className="h-8 text-xs"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addManualProgram();
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={addManualProgram}
+                        disabled={!manualProgramInput.trim()}
+                      >
+                        <Plus className="size-3.5" />
+                        Add ID
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="sp-nationality" className="mb-1.5 block font-medium text-sm">
+                    Nationality (spNationality)
+                  </Label>
+                  <Input
+                    id="sp-nationality"
+                    value={campaignForm.spNationality}
+                    onChange={(event) =>
+                      setCampaignForm((current) => ({ ...current, spNationality: event.target.value }))
+                    }
+                    placeholder="e.g. Tunisian"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="sp-is-default" className="font-medium text-sm">
+                      Default Campaign (SpIsDefault)
+                    </Label>
+                    <p className="text-muted-foreground text-xs">Set as the default campaign for this center</p>
+                  </div>
+                  <Switch
+                    id="sp-is-default"
+                    checked={campaignForm.SpIsDefault}
+                    onCheckedChange={(checked) => setCampaignForm((current) => ({ ...current, SpIsDefault: checked }))}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Last synced from CRM</label>
+                  <Label htmlFor="campaign-start-date" className="mb-1.5 block font-medium text-sm">
+                    Start Date
+                  </Label>
                   <Input
+                    id="campaign-start-date"
+                    type="date"
+                    value={campaignForm.startDate}
+                    onChange={(event) => setCampaignForm((current) => ({ ...current, startDate: event.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="campaign-end-date" className="mb-1.5 block font-medium text-sm">
+                    End Date
+                  </Label>
+                  <Input
+                    id="campaign-end-date"
+                    type="date"
+                    value={campaignForm.endDate}
+                    onChange={(event) => setCampaignForm((current) => ({ ...current, endDate: event.target.value }))}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label htmlFor="campaign-synced-at" className="mb-1.5 block font-medium text-sm">
+                    Last Synced from CRM (optional)
+                  </Label>
+                  <Input
+                    id="campaign-synced-at"
+                    type="datetime-local"
                     value={campaignForm.last_synced_from_crm_at}
                     onChange={(event) =>
                       setCampaignForm((current) => ({ ...current, last_synced_from_crm_at: event.target.value }))
                     }
-                    placeholder="null or ISO date"
+                    placeholder="Leave empty for null"
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="campaign-center" className="mb-1 block text-sm font-medium">
-                    Center
-                  </label>
-                  <NativeSelect
-                    id="campaign-center"
-                    value={campaignForm.center_id}
-                    onChange={(event) => setCampaignForm((current) => ({ ...current, center_id: event.target.value }))}
-                    required
-                    disabled={availableCenters.length === 0}
-                  >
-                    <NativeSelectOption value="">Choose one center</NativeSelectOption>
-                    {availableCenters.map((center) => (
-                      <NativeSelectOption key={center.id} value={center.id}>
-                        {center.name}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </div>
-
-                <div>
-                  <label htmlFor="campaign-programs" className="mb-1 block text-sm font-medium">
-                    Programs
-                  </label>
-                  <NativeSelect
-                    id="campaign-programs"
-                    multiple
-                    value={campaignForm.program_ids}
-                    onChange={(event) =>
-                      setCampaignForm((current) => ({
-                        ...current,
-                        program_ids: Array.from(event.target.selectedOptions, (option) => option.value),
-                      }))
-                    }
-                    required
-                    disabled={availablePrograms.length === 0}
-                    className="h-32"
-                  >
-                    {availablePrograms.map((program) => (
-                      <NativeSelectOption key={program.id} value={program.id}>
-                        {program.name}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </div>
-
-                {optionsStatus ? <div className="md:col-span-2 text-sm text-muted-foreground">{optionsStatus}</div> : null}
-
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Owner user ID</label>
-                  <Input
-                    value={campaignForm.owner_user_id}
-                    onChange={(event) => setCampaignForm((current) => ({ ...current, owner_user_id: event.target.value }))}
-                  />
-                </div>
-
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-2 md:col-span-2">
                   <Button type="submit" disabled={campaignStatus.isLoading}>
-                    {campaignStatus.isLoading ? "Creating..." : "Create campaign"}
+                    {campaignStatus.isLoading ? "Creating campaign..." : "Create campaign"}
                   </Button>
                 </div>
               </form>
@@ -399,7 +801,9 @@ export function CampaignManager() {
               {campaignStatus.message ? (
                 <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-sm">
                   <div className="font-medium">{campaignStatus.message}</div>
-                  {campaignStatus.result ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{campaignStatus.result}</pre> : null}
+                  {campaignStatus.result ? (
+                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{campaignStatus.result}</pre>
+                  ) : null}
                 </div>
               ) : null}
             </CardContent>
@@ -415,24 +819,33 @@ export function CampaignManager() {
             <CardContent>
               <form className="grid gap-4 md:grid-cols-2" onSubmit={handleProgramSubmit}>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Program name</label>
+                  <Label htmlFor="program-create-name" className="mb-1 block font-medium text-sm">
+                    Program name
+                  </Label>
                   <Input
+                    id="program-create-name"
                     value={programForm.name}
                     onChange={(event) => setProgramForm((current) => ({ ...current, name: event.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">CRM ID</label>
+                  <Label htmlFor="program-create-crm-id" className="mb-1 block font-medium text-sm">
+                    CRM ID
+                  </Label>
                   <Input
+                    id="program-create-crm-id"
                     value={programForm.crm_id}
                     onChange={(event) => setProgramForm((current) => ({ ...current, crm_id: event.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Requires specific amount</label>
+                  <Label htmlFor="program-create-requires-amount" className="mb-1 block font-medium text-sm">
+                    Requires specific amount
+                  </Label>
                   <select
+                    id="program-create-requires-amount"
                     className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     value={programForm.requires_specific_amount}
                     onChange={(event) =>
@@ -445,8 +858,11 @@ export function CampaignManager() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Amount</label>
+                  <Label htmlFor="program-create-amount" className="mb-1 block font-medium text-sm">
+                    Amount
+                  </Label>
                   <Input
+                    id="program-create-amount"
                     type="number"
                     step="0.01"
                     value={programForm.amount}
@@ -454,7 +870,7 @@ export function CampaignManager() {
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-2 md:col-span-2">
                   <Button type="submit" disabled={programStatus.isLoading}>
                     {programStatus.isLoading ? "Creating..." : "Create program"}
                   </Button>
@@ -464,7 +880,9 @@ export function CampaignManager() {
               {programStatus.message ? (
                 <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-sm">
                   <div className="font-medium">{programStatus.message}</div>
-                  {programStatus.result ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{programStatus.result}</pre> : null}
+                  {programStatus.result ? (
+                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{programStatus.result}</pre>
+                  ) : null}
                 </div>
               ) : null}
             </CardContent>
@@ -480,30 +898,39 @@ export function CampaignManager() {
             <CardContent>
               <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCenterSubmit}>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Center name</label>
+                  <Label htmlFor="center-create-name" className="mb-1 block font-medium text-sm">
+                    Center name
+                  </Label>
                   <Input
+                    id="center-create-name"
                     value={centerForm.name}
                     onChange={(event) => setCenterForm((current) => ({ ...current, name: event.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Phone</label>
+                  <Label htmlFor="center-create-phone" className="mb-1 block font-medium text-sm">
+                    Phone
+                  </Label>
                   <Input
+                    id="center-create-phone"
                     value={centerForm.phone}
                     onChange={(event) => setCenterForm((current) => ({ ...current, phone: event.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Address</label>
+                  <Label htmlFor="center-create-address" className="mb-1 block font-medium text-sm">
+                    Address
+                  </Label>
                   <Input
+                    id="center-create-address"
                     value={centerForm.address}
                     onChange={(event) => setCenterForm((current) => ({ ...current, address: event.target.value }))}
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-2 md:col-span-2">
                   <Button type="submit" disabled={centerStatus.isLoading}>
                     {centerStatus.isLoading ? "Creating..." : "Create center"}
                   </Button>
@@ -513,49 +940,9 @@ export function CampaignManager() {
               {centerStatus.message ? (
                 <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-sm">
                   <div className="font-medium">{centerStatus.message}</div>
-                  {centerStatus.result ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{centerStatus.result}</pre> : null}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="links">
-          <Card>
-            <CardHeader>
-              <CardTitle>Link program(s) to campaign</CardTitle>
-              <CardDescription>Associate one or many programs to a campaign.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="grid gap-4 md:grid-cols-2" onSubmit={handleLinkSubmit}>
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Campaign ID</label>
-                  <Input
-                    value={linkForm.campaignId}
-                    onChange={(event) => setLinkForm((current) => ({ ...current, campaignId: event.target.value }))}
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Program IDs</label>
-                  <Input
-                    value={linkForm.programIds}
-                    onChange={(event) => setLinkForm((current) => ({ ...current, programIds: event.target.value }))}
-                    placeholder="comma-separated UUIDs"
-                  />
-                </div>
-
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
-                  <Button type="submit" disabled={linkStatus.isLoading}>
-                    {linkStatus.isLoading ? "Linking..." : "Link programs"}
-                  </Button>
-                </div>
-              </form>
-
-              {linkStatus.message ? (
-                <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-sm">
-                  <div className="font-medium">{linkStatus.message}</div>
-                  {linkStatus.result ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{linkStatus.result}</pre> : null}
+                  {centerStatus.result ? (
+                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{centerStatus.result}</pre>
+                  ) : null}
                 </div>
               ) : null}
             </CardContent>

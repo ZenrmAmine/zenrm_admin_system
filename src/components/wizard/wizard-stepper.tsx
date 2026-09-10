@@ -95,7 +95,7 @@ export function WizardStepper({ steps, activeStepId, completedStepIds, onStepCli
               onClick={() => onStepClick(step.id)}
               style={{ clipPath: chevronClipFor(isFirst, isLast) }}
               className={cn(
-                "flex h-14 min-w-0 flex-1 items-center justify-center gap-2.5 px-6 text-sm font-medium transition-colors motion-safe:duration-200",
+                "flex h-14 min-w-0 flex-1 items-center justify-center gap-2.5 px-6 font-medium text-sm transition-colors motion-safe:duration-200",
                 !isFirst && "-ml-3.5",
                 status === "completed" && "bg-teal-600 text-white hover:bg-teal-600/90",
                 (status === "active" || status === "upcoming") &&

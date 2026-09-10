@@ -11,7 +11,7 @@ export function OnboardingError() {
         </div>
         <div className="flex flex-col gap-1.5">
           <p className="font-medium">This onboarding link is invalid or has expired.</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Please check the link you were given, or reach out to whoever sent it for a new one.
           </p>
         </div>
