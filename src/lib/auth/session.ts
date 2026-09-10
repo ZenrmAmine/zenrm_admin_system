@@ -45,13 +45,16 @@ function normalizeSessionUser(payload: Record<string, unknown>): SessionUser | n
 
   const role = typeof user.role === "string" ? user.role : "employee";
 
-  const clientId =
-    typeof user.client_id === "string"
-      ? user.client_id
-      : typeof client?.client_id === "string"
-        ? client.client_id
-        : undefined;
-
+  let clientId: string | undefined;
+  if (typeof user.client_id === "string") {
+    clientId = user.client_id;
+  } else if (typeof user.clientId === "string") {
+    clientId = user.clientId;
+  } else if (typeof client?.client_id === "string") {
+    clientId = client.client_id;
+  } else if (typeof payload.client_id === "string") {
+    clientId = payload.client_id;
+  }
   const avatar =
     typeof user.avatar === "string"
       ? user.avatar

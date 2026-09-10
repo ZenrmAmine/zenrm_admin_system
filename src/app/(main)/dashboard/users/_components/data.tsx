@@ -1,3 +1,5 @@
+import { format, isValid } from "date-fns";
+
 export type UserStatus = "Active" | "Pending invite" | "Deactivated" | "Locked" | "Suspended";
 
 const teamValues = [
@@ -316,3 +318,107 @@ export const statusMeta: Record<UserStatus, { badgeClass: string; dotClass: stri
     dotClass: "bg-orange-500",
   },
 };
+
+export function extractRecords(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
+  if (typeof payload !== "object" || payload === null) return [];
+
+  const record = payload as Record<string, unknown>;
+
+  for (const key of ["data", "users", "contacts", "results", "items", "records", "rows", "entries"]) {
+    const val = record[key];
+    if (Array.isArray(val)) return val;
+    if (typeof val === "object" && val !== null) {
+      for (const subKey of ["data", "users", "contacts", "results", "items", "records", "rows", "entries"]) {
+        const subVal = (val as Record<string, unknown>)[subKey];
+        if (Array.isArray(subVal)) return subVal;
+      }
+    }
+  }
+
+  for (const val of Object.values(record)) {
+    if (Array.isArray(val)) return val;
+  }
+
+  return [];
+}
+
+export function mapBackendUserToUserRow(item: unknown, index: number): UserRow {
+  if (typeof item !== "object" || item === null) {
+    return {
+      name: "Unknown User",
+      email: `user-${index}@example.com`,
+      role: "Member",
+      status: "Active",
+      team: "Platform",
+      workspace: ["Default"],
+      joinedDate: format(new Date(), "dd MMM yyyy, h:mm a"),
+      lastActive: 0,
+    };
+  }
+
+  const u = item as Record<string, unknown>;
+
+  const name =
+    (typeof u.full_name === "string" && u.full_name.trim()) ||
+    (typeof u.name === "string" && u.name.trim()) ||
+    (typeof u.username === "string" && u.username.trim()) ||
+    "User";
+
+  const email = (typeof u.email === "string" && u.email.trim()) || `user-${index}@example.com`;
+
+  const rawRole = (typeof u.role === "string" && u.role.trim()) || "Member";
+  const role = rawRole.charAt(0).toUpperCase() + rawRole.slice(1);
+
+  const rawStatus = typeof u.status === "string" ? u.status.toLowerCase().trim() : "active";
+  let status: UserStatus = "Active";
+  if (rawStatus === "active") {
+    status = "Active";
+  } else if (rawStatus === "pending" || rawStatus === "pending invite" || rawStatus === "invited") {
+    status = "Pending invite";
+  } else if (rawStatus === "deactivated" || rawStatus === "inactive") {
+    status = "Deactivated";
+  } else if (rawStatus === "locked") {
+    status = "Locked";
+  } else if (rawStatus === "suspended") {
+    status = "Suspended";
+  }
+
+  const team: UserTeam =
+    typeof u.team === "string" && (teamValues as readonly string[]).includes(u.team)
+      ? (u.team as UserTeam)
+      : "Platform";
+
+  let workspace = ["Weblabs Studio"];
+  if (Array.isArray(u.workspace)) {
+    workspace = u.workspace.map(String);
+  } else if (typeof u.client_name === "string") {
+    workspace = [u.client_name];
+  } else if (typeof u.client_id === "string") {
+    workspace = [u.client_id];
+  }
+
+  let joinedDate = format(new Date(), "dd MMM yyyy, h:mm a");
+  const dateCandidate = u.created_at ?? u.createdAt ?? u.joined_date ?? u.joinedDate;
+  if (typeof dateCandidate === "string") {
+    const parsedDate = new Date(dateCandidate);
+    if (isValid(parsedDate)) {
+      joinedDate = format(parsedDate, "dd MMM yyyy, h:mm a");
+    } else {
+      joinedDate = dateCandidate;
+    }
+  }
+
+  const lastActive = typeof u.lastActive === "number" ? u.lastActive : 0;
+
+  return {
+    name,
+    email,
+    role,
+    status,
+    team,
+    workspace,
+    joinedDate,
+    lastActive,
+  };
+}

@@ -79,7 +79,9 @@ export function AppSidebar({
             <SidebarMenuButton asChild>
               <Link prefetch={false} href="/dashboard/default">
                 <Command />
-                <span className="font-semibold text-base">{brandName ?? APP_CONFIG.name}</span>
+                <span className="truncate font-semibold text-base" title={brandName ?? APP_CONFIG.name}>
+                  {brandName ?? APP_CONFIG.name}
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

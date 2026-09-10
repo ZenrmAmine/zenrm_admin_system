@@ -26,16 +26,20 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
     getZenrmSessionUser(),
   ]);
 
-  const clientId = sessionUser?.client_id;
+  // 1. Get clientId from session token (with fallback to CLT-9V3NXY)
+  const clientId = sessionUser?.client_id ?? "CLT-9V3NXY";
   let brandName = APP_CONFIG.name;
-  console.log("Session User:", clientId);
+
   if (clientId) {
-    console.log("Fetching client data for clientId:", clientId);
     try {
-      console.log("Making API request to fetch client data...");
       const { data } = await apiClient.get(`/client/${clientId}`);
-      console.log("API response received:", data);
-    } catch {
+      // 2. Extract organizationName from onboarding_data or name
+      const organizationName = data?.onboarding_data?.clientInformation?.organizationName ?? data?.name;
+      if (organizationName) {
+        brandName = organizationName;
+      }
+    } catch (error) {
+      console.warn(`[Dashboard] Failed to fetch client for ${clientId}:`, error);
       brandName = sessionUser?.full_name || brandName;
     }
   }
