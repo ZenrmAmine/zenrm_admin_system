@@ -173,17 +173,17 @@ export const recentOrdersColumns: ColumnDef<OrderRow>[] = [
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex w-full justify-end">
-            <Button aria-label="Open order actions" size="icon-sm" variant="ghost">
+            <Button aria-label="Open donation actions" size="icon-sm" variant="ghost">
               <MoreHorizontal />
             </Button>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
-          <DropdownMenuLabel>Order Actions</DropdownMenuLabel>
+          <DropdownMenuLabel>donation Actions</DropdownMenuLabel>
           <DropdownMenuGroup>
-            <DropdownMenuItem>View order</DropdownMenuItem>
+            <DropdownMenuItem>View donation</DropdownMenuItem>
             <DropdownMenuItem>Contact customer</DropdownMenuItem>
-            <DropdownMenuItem>Copy order ID</DropdownMenuItem>
+            <DropdownMenuItem>Copy donation ID</DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
