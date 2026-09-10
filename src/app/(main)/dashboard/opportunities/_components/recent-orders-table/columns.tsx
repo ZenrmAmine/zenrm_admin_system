@@ -21,23 +21,25 @@ function formatOrderDate(date: string) {
 }
 
 function PaymentBadge({ status }: { status: OrderRow["stageName"] }) {
-  if (status === "Closed Won") {
+  const normalized = status.toLowerCase();
+
+  if (normalized.includes("closed") || normalized.includes("won") || normalized.includes("paid")) {
     return (
       <Badge
         className="border-green-700/25 text-green-700 dark:border-green-300/25 dark:text-green-300"
         variant="outline"
       >
         <span className="size-1.5 rounded-full bg-current" />
-        Closed Won
+        {status}
       </Badge>
     );
   }
 
-  if (status === "Declined") {
+  if (normalized.includes("declined") || normalized.includes("refunded") || normalized.includes("failed")) {
     return (
       <Badge variant="destructive">
         <span className="size-1.5 rounded-full bg-current" />
-        Declined
+        {status}
       </Badge>
     );
   }
@@ -48,12 +50,12 @@ function PaymentBadge({ status }: { status: OrderRow["stageName"] }) {
       variant="outline"
     >
       <span className="size-1.5 rounded-full bg-current" />
-      Pending
+      {status || "Pending"}
     </Badge>
   );
 }
 
-function FulfillmentBadge({ status }: { status: OrderRow["syncedWithSalesforce"] }) {
+function _FulfillmentBadge({ status }: { status: OrderRow["syncedWithSalesforce"] }) {
   if (status === true) {
     return (
       <Badge
@@ -61,16 +63,7 @@ function FulfillmentBadge({ status }: { status: OrderRow["syncedWithSalesforce"]
         variant="outline"
       >
         <span className="size-1.5 rounded-full bg-current" />
-        True
-      </Badge>
-    );
-  }
-
-  if (status === false) {
-    return (
-      <Badge variant="destructive">
-        <span className="size-1.5 rounded-full bg-current" />
-        Returned
+        Synced
       </Badge>
     );
   }
@@ -78,7 +71,7 @@ function FulfillmentBadge({ status }: { status: OrderRow["syncedWithSalesforce"]
   return (
     <Badge variant="destructive">
       <span className="size-1.5 rounded-full bg-current" />
-      NOT SYNCHED
+      Not synced
     </Badge>
   );
 }
@@ -138,22 +131,24 @@ export const recentOrdersColumns: ColumnDef<OrderRow>[] = [
       </div>
     ),
     filterFn: (row, _columnId, value) => {
+      const stageName = row.original.stageName.toLowerCase();
+
       if (value === "Needs action") {
         return (
-          row.original.stageName === "Pending" ||
-          row.original.stageName === "Declined" ||
-          row.original.donationSource === "Fundrasing App"
+          stageName.includes("pending") ||
+          stageName.includes("declined") ||
+          stageName.includes("review") ||
+          stageName.includes("incomplete") ||
+          row.original.donationSource.toLowerCase().includes("fund")
         );
       }
 
-
-
       if (value === "Unpaid") {
-        return row.original.stageName === "Pending";
+        return stageName.includes("pending") || stageName.includes("open") || stageName.includes("unpaid");
       }
 
       if (value === "Returns") {
-        return row.original.stageName === "Declined" || row.original.donationSource === "Fundrasing App";
+        return stageName.includes("declined") || stageName.includes("refunded") || stageName.includes("return");
       }
 
       return true;

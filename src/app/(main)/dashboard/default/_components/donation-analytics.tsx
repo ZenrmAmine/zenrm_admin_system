@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { MetricCards } from "./_components/metric-cards";
-import { PerformanceOverview } from "./_components/performance-overview";
+import { MetricCards } from "./metric-cards";
+import { PerformanceOverview } from "./performance-overview";
 
 type DonationDay = {
   date: string;
@@ -54,7 +54,7 @@ function normalizeAnalytics(payload: unknown): DonationAnalytics {
   };
 }
 
-export default function Page() {
+export function DonationAnalyticsOverview() {
   const [data, setData] = useState<DonationAnalytics>(EMPTY_ANALYTICS);
   const [isLoading, setIsLoading] = useState(true);
 

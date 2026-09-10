@@ -60,7 +60,7 @@ function WizardStepForm({ step, isFirstStep, isLastStep, onBack, onNext }: Wizar
         <Button
           type="submit"
           disabled={form.formState.isSubmitting}
-          className={cn("h-11 min-w-24 md:h-9 bg-teal-600 text-white hover:bg-teal-600/90")}
+          className={cn("h-11 min-w-24 bg-teal-600 text-white hover:bg-teal-600/90 md:h-9")}
         >
           {form.formState.isSubmitting && <Spinner className="size-4" />}
           {submitLabel(form.formState.isSubmitting, isLastStep)}
@@ -134,7 +134,7 @@ export function Wizard({
         />
         <Card
           key={activeStep.id}
-          className="[--card-spacing:--spacing(6)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300"
+          className="motion-safe:fade-in motion-safe:slide-in-from-bottom-1 [--card-spacing:--spacing(6)] motion-safe:animate-in motion-safe:duration-300"
         >
           <CardHeader className="gap-2 border-b">
             <CardTitle className="text-xl">{activeStep.label}</CardTitle>

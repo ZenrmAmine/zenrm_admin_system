@@ -2,22 +2,10 @@ import {
   Banknote,
   Calendar,
   ChartBar,
-  CheckSquare,
   Fingerprint,
-  Forklift,
   Gauge,
-  GraduationCap,
-  Kanban,
   LayoutDashboard,
-  ListTodo,
-  Lock,
   type LucideIcon,
-  Mail,
-  MessageSquare,
-  ReceiptText,
-  Server,
-  ShoppingBag,
-  SquareArrowUpRight,
   Users,
 } from "lucide-react";
 
@@ -128,9 +116,7 @@ export const sidebarItems: NavGroup[] = [
         id: "authentication",
         title: "Authentication",
         icon: Fingerprint,
-        subItems: [
-          { id: "auth-register-v2", title: "Register a User", url: "/auth/v2/register", newTab: true },
-        ],
+        subItems: [{ id: "auth-register-v2", title: "Register a User", url: "/auth/v2/register", newTab: true }],
       },
       {
         id: "crm",
@@ -177,7 +163,7 @@ export const sidebarItems: NavGroup[] = [
         badge: "new",
       },*/
     ],
-  }/*,
+  } /*,
   {
     id: 2,
     label: "Pages",
@@ -273,5 +259,5 @@ export const sidebarItems: NavGroup[] = [
         disabled: true,
       },
     ],
-  },*/
+  },*/,
 ];

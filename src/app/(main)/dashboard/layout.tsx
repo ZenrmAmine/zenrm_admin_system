@@ -1,16 +1,14 @@
 import type { ReactNode } from "react";
 
 import { cookies } from "next/headers";
-import Link from "next/link";
-
-import { siGithub } from "simple-icons";
 
 import { AppSidebar } from "@/app/(main)/dashboard/_components/sidebar/app-sidebar";
-import { SimpleIcon } from "@/components/simple-icon";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { APP_CONFIG } from "@/config/app-config";
 import { users } from "@/data/users";
+import { apiClient } from "@/lib/api-client";
+import { getZenrmSessionUser } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
 import { getPreference } from "@/server/server-actions";
 
@@ -22,11 +20,27 @@ import { ThemeSwitcher } from "./_components/sidebar/theme-switcher";
 export default async function Layout({ children }: Readonly<{ children: ReactNode }>) {
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
-  const [variant, collapsible] = await Promise.all([
+  const [variant, collapsible, sessionUser] = await Promise.all([
     getPreference("sidebar_variant"),
     getPreference("sidebar_collapsible"),
+    getZenrmSessionUser(),
   ]);
 
+  const clientId = sessionUser?.client_id;
+  let brandName = APP_CONFIG.name;
+  console.log("Session User:", clientId);
+  if (clientId) {
+    console.log("Fetching client data for clientId:", clientId);
+    try {
+      console.log("Making API request to fetch client data...");
+      const { data } = await apiClient.get(`/client/${clientId}`);
+      console.log("API response received:", data);
+    } catch {
+      brandName = sessionUser?.full_name || brandName;
+    }
+  }
+
+  const sidebarUsers = sessionUser ? [sessionUser] : users;
   return (
     <SidebarProvider
       defaultOpen={defaultOpen}
@@ -36,7 +50,7 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant={variant} collapsible={collapsible} />
+      <AppSidebar variant={variant} collapsible={collapsible} brandName={brandName} />
       <SidebarInset
         className={cn(
           "[html[data-content-layout=centered]_&>*]:mx-auto",
@@ -66,8 +80,8 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
             <div className="flex items-center gap-2">
               <LayoutControls />
               <ThemeSwitcher />
-              
-              <AccountSwitcher users={users} />
+
+              <AccountSwitcher users={sidebarUsers} />
             </div>
           </div>
         </header>

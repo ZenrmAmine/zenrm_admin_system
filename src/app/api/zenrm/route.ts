@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { isAxiosError } from "axios";
 
 import { apiClient, extractErrorMessage } from "@/lib/api-client";
-import { getZenrmSessionToken } from "@/lib/auth/session";
+import { clearZenrmSessionToken, getZenrmSessionToken } from "@/lib/auth/session";
 
 const BACKEND_URLS = {
   listPrograms: "/program/zenrm/programs",
@@ -12,12 +12,22 @@ const BACKEND_URLS = {
   createProgram: "/program/zenrm/programs",
   createCenter: "/center/zenrm/create",
   linkPrograms: "/campaign/zenrm/linkprogramtocampaign",
+  getDonation: "/donation/zenrm/findAll",
+  getDonationAnalytics: "/donation/zenrm/analytics",
+  getClient: "/client",
 } as const;
 
-const READ_OPERATIONS = new Set<keyof typeof BACKEND_URLS>(["listPrograms", "listCenters"]);
+const READ_OPERATIONS = new Set<keyof typeof BACKEND_URLS>([
+  "listPrograms",
+  "listCenters",
+  "getDonation",
+  "getDonationAnalytics",
+  "getClient",
+]);
 
 async function getBearerToken(): Promise<string | null> {
   const token = (await getZenrmSessionToken())?.trim();
+  console.log("Retrieved ZenRM session token:", token);
   if (!token) return null;
 
   return token.replace(/^Bearer\s+/i, "");
@@ -38,10 +48,18 @@ async function forwardRequest(request: Request, method: "GET" | "POST") {
         })
       : null;
 
-  const operation = method === "GET" ? new URL(request.url).searchParams.get("operation") : body?.operation;
+  const urlObj = new URL(request.url);
+  const operation = method === "GET" ? urlObj.searchParams.get("operation") : body?.operation;
   const payload = body?.payload ?? {};
+  const clientId =
+    urlObj.searchParams.get("clientId") ?? (typeof payload.clientId === "string" ? payload.clientId : null);
 
-  const url = operation && operation in BACKEND_URLS ? BACKEND_URLS[operation as keyof typeof BACKEND_URLS] : null;
+  let url: string | null =
+    operation && operation in BACKEND_URLS ? BACKEND_URLS[operation as keyof typeof BACKEND_URLS] : null;
+
+  if (operation === "getClient" && clientId) {
+    url = `${BACKEND_URLS.getClient}/${clientId}`;
+  }
 
   if (!url || (method === "GET" && !READ_OPERATIONS.has(operation as keyof typeof BACKEND_URLS))) {
     return NextResponse.json({ error: "Unsupported ZenRM operation." }, { status: 400 });
@@ -84,4 +102,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   return forwardRequest(request, "POST");
+}
+
+export async function DELETE(_request: Request) {
+  await clearZenrmSessionToken();
+  return NextResponse.json({ message: "Logged out successfully" }, { status: 200 });
 }

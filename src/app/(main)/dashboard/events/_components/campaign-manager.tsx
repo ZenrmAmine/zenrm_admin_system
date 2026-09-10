@@ -33,7 +33,9 @@ async function requestZenrm(operation: CampaignOperation, payload: Record<string
 
   if (!response.ok) {
     const message =
-      typeof parsed === "object" && parsed && "error" in parsed ? String((parsed as { error?: string }).error) : text || "Request failed.";
+      typeof parsed === "object" && parsed && "error" in parsed
+        ? String((parsed as { error?: string }).error)
+        : text || "Request failed.";
 
     throw new Error(message);
   }
@@ -60,9 +62,7 @@ async function requestZenrmList(operation: "listPrograms" | "listCenters"): Prom
   return records.flatMap((record) => {
     if (typeof record !== "object" || !record || !("id" in record)) return [];
     const item = record as { id?: unknown; name?: unknown; title?: unknown };
-    return typeof item.id === "string"
-      ? [{ id: item.id, name: String(item.name ?? item.title ?? item.id) }]
-      : [];
+    return typeof item.id === "string" ? [{ id: item.id, name: String(item.name ?? item.title ?? item.id) }] : [];
   });
 }
 
@@ -134,7 +134,8 @@ export function CampaignManager() {
         setOptionsStatus("");
       })
       .catch((error) => {
-        if (isCurrent) setOptionsStatus(error instanceof Error ? error.message : "Unable to load programs and centers.");
+        if (isCurrent)
+          setOptionsStatus(error instanceof Error ? error.message : "Unable to load programs and centers.");
       });
 
     return () => {
@@ -277,14 +278,14 @@ export function CampaignManager() {
     <div className="flex flex-col gap-4">
       <div className="space-y-1">
         <h1 className="text-3xl tracking-tight">Campaigns & Programs</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Create campaigns, programs, and centers, then link programs to a campaign.
         </p>
       </div>
 
       <Card>
         <CardContent className="pt-4">
-          <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-muted-foreground text-sm">
             Authenticated with the backend session token. No manual bearer token is required here.
           </div>
         </CardContent>
@@ -307,7 +308,7 @@ export function CampaignManager() {
             <CardContent>
               <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCampaignSubmit}>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Name</label>
+                  <label className="mb-1 block font-medium text-sm">Name</label>
                   <Input
                     value={campaignForm.name}
                     onChange={(event) => setCampaignForm((current) => ({ ...current, name: event.target.value }))}
@@ -315,7 +316,7 @@ export function CampaignManager() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Status</label>
+                  <label className="mb-1 block font-medium text-sm">Status</label>
                   <Input
                     value={campaignForm.status}
                     onChange={(event) => setCampaignForm((current) => ({ ...current, status: event.target.value }))}
@@ -323,7 +324,7 @@ export function CampaignManager() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Last synced from CRM</label>
+                  <label className="mb-1 block font-medium text-sm">Last synced from CRM</label>
                   <Input
                     value={campaignForm.last_synced_from_crm_at}
                     onChange={(event) =>
@@ -334,7 +335,7 @@ export function CampaignManager() {
                 </div>
 
                 <div>
-                  <label htmlFor="campaign-center" className="mb-1 block text-sm font-medium">
+                  <label htmlFor="campaign-center" className="mb-1 block font-medium text-sm">
                     Center
                   </label>
                   <NativeSelect
@@ -354,7 +355,7 @@ export function CampaignManager() {
                 </div>
 
                 <div>
-                  <label htmlFor="campaign-programs" className="mb-1 block text-sm font-medium">
+                  <label htmlFor="campaign-programs" className="mb-1 block font-medium text-sm">
                     Programs
                   </label>
                   <NativeSelect
@@ -379,17 +380,21 @@ export function CampaignManager() {
                   </NativeSelect>
                 </div>
 
-                {optionsStatus ? <div className="md:col-span-2 text-sm text-muted-foreground">{optionsStatus}</div> : null}
+                {optionsStatus ? (
+                  <div className="text-muted-foreground text-sm md:col-span-2">{optionsStatus}</div>
+                ) : null}
 
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Owner user ID</label>
+                  <label className="mb-1 block font-medium text-sm">Owner user ID</label>
                   <Input
                     value={campaignForm.owner_user_id}
-                    onChange={(event) => setCampaignForm((current) => ({ ...current, owner_user_id: event.target.value }))}
+                    onChange={(event) =>
+                      setCampaignForm((current) => ({ ...current, owner_user_id: event.target.value }))
+                    }
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-2 md:col-span-2">
                   <Button type="submit" disabled={campaignStatus.isLoading}>
                     {campaignStatus.isLoading ? "Creating..." : "Create campaign"}
                   </Button>
@@ -399,7 +404,9 @@ export function CampaignManager() {
               {campaignStatus.message ? (
                 <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-sm">
                   <div className="font-medium">{campaignStatus.message}</div>
-                  {campaignStatus.result ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{campaignStatus.result}</pre> : null}
+                  {campaignStatus.result ? (
+                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{campaignStatus.result}</pre>
+                  ) : null}
                 </div>
               ) : null}
             </CardContent>
@@ -415,7 +422,7 @@ export function CampaignManager() {
             <CardContent>
               <form className="grid gap-4 md:grid-cols-2" onSubmit={handleProgramSubmit}>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Program name</label>
+                  <label className="mb-1 block font-medium text-sm">Program name</label>
                   <Input
                     value={programForm.name}
                     onChange={(event) => setProgramForm((current) => ({ ...current, name: event.target.value }))}
@@ -423,7 +430,7 @@ export function CampaignManager() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">CRM ID</label>
+                  <label className="mb-1 block font-medium text-sm">CRM ID</label>
                   <Input
                     value={programForm.crm_id}
                     onChange={(event) => setProgramForm((current) => ({ ...current, crm_id: event.target.value }))}
@@ -431,7 +438,7 @@ export function CampaignManager() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Requires specific amount</label>
+                  <label className="mb-1 block font-medium text-sm">Requires specific amount</label>
                   <select
                     className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     value={programForm.requires_specific_amount}
@@ -445,7 +452,7 @@ export function CampaignManager() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Amount</label>
+                  <label className="mb-1 block font-medium text-sm">Amount</label>
                   <Input
                     type="number"
                     step="0.01"
@@ -454,7 +461,7 @@ export function CampaignManager() {
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-2 md:col-span-2">
                   <Button type="submit" disabled={programStatus.isLoading}>
                     {programStatus.isLoading ? "Creating..." : "Create program"}
                   </Button>
@@ -464,7 +471,9 @@ export function CampaignManager() {
               {programStatus.message ? (
                 <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-sm">
                   <div className="font-medium">{programStatus.message}</div>
-                  {programStatus.result ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{programStatus.result}</pre> : null}
+                  {programStatus.result ? (
+                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{programStatus.result}</pre>
+                  ) : null}
                 </div>
               ) : null}
             </CardContent>
@@ -480,7 +489,7 @@ export function CampaignManager() {
             <CardContent>
               <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCenterSubmit}>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Center name</label>
+                  <label className="mb-1 block font-medium text-sm">Center name</label>
                   <Input
                     value={centerForm.name}
                     onChange={(event) => setCenterForm((current) => ({ ...current, name: event.target.value }))}
@@ -488,7 +497,7 @@ export function CampaignManager() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Phone</label>
+                  <label className="mb-1 block font-medium text-sm">Phone</label>
                   <Input
                     value={centerForm.phone}
                     onChange={(event) => setCenterForm((current) => ({ ...current, phone: event.target.value }))}
@@ -496,14 +505,14 @@ export function CampaignManager() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Address</label>
+                  <label className="mb-1 block font-medium text-sm">Address</label>
                   <Input
                     value={centerForm.address}
                     onChange={(event) => setCenterForm((current) => ({ ...current, address: event.target.value }))}
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-2 md:col-span-2">
                   <Button type="submit" disabled={centerStatus.isLoading}>
                     {centerStatus.isLoading ? "Creating..." : "Create center"}
                   </Button>
@@ -513,7 +522,9 @@ export function CampaignManager() {
               {centerStatus.message ? (
                 <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-sm">
                   <div className="font-medium">{centerStatus.message}</div>
-                  {centerStatus.result ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{centerStatus.result}</pre> : null}
+                  {centerStatus.result ? (
+                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{centerStatus.result}</pre>
+                  ) : null}
                 </div>
               ) : null}
             </CardContent>
@@ -529,7 +540,7 @@ export function CampaignManager() {
             <CardContent>
               <form className="grid gap-4 md:grid-cols-2" onSubmit={handleLinkSubmit}>
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Campaign ID</label>
+                  <label className="mb-1 block font-medium text-sm">Campaign ID</label>
                   <Input
                     value={linkForm.campaignId}
                     onChange={(event) => setLinkForm((current) => ({ ...current, campaignId: event.target.value }))}
@@ -537,7 +548,7 @@ export function CampaignManager() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium">Program IDs</label>
+                  <label className="mb-1 block font-medium text-sm">Program IDs</label>
                   <Input
                     value={linkForm.programIds}
                     onChange={(event) => setLinkForm((current) => ({ ...current, programIds: event.target.value }))}
@@ -545,7 +556,7 @@ export function CampaignManager() {
                   />
                 </div>
 
-                <div className="md:col-span-2 flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-2 md:col-span-2">
                   <Button type="submit" disabled={linkStatus.isLoading}>
                     {linkStatus.isLoading ? "Linking..." : "Link programs"}
                   </Button>
@@ -555,7 +566,9 @@ export function CampaignManager() {
               {linkStatus.message ? (
                 <div className="mt-4 rounded-lg border bg-muted/40 p-3 text-sm">
                   <div className="font-medium">{linkStatus.message}</div>
-                  {linkStatus.result ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{linkStatus.result}</pre> : null}
+                  {linkStatus.result ? (
+                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{linkStatus.result}</pre>
+                  ) : null}
                 </div>
               ) : null}
             </CardContent>

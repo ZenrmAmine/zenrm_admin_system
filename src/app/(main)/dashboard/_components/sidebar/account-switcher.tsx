@@ -1,33 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
-import { BadgeCheck, Bell, Check, CreditCard, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import { Check, LogOut } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn, getInitials } from "@/lib/utils";
 
-export function AccountSwitcher({
-  users,
-}: {
-  readonly users: ReadonlyArray<{
-    readonly id: string;
-    readonly name: string;
-    readonly email: string;
-    readonly avatar: string;
-    readonly role: string;
-  }>;
-}) {
-  const [activeUser, setActiveUser] = useState(users[0]);
+type AccountUser = {
+  id?: string;
+  name?: string;
+  full_name?: string;
+  email: string;
+  role?: string;
+  avatar?: string;
+  client_id?: string | { client_id?: string; full_name?: string; user_id?: string };
+};
 
+export function AccountSwitcher({ users }: { readonly users: ReadonlyArray<AccountUser> }) {
+  const [isLoggingOut, startLogout] = useTransition();
+  const router = useRouter();
+
+  const normalizeUser = (user: AccountUser) => ({
+    id: user.id ?? (typeof user.client_id === "object" ? user.client_id?.user_id : undefined) ?? user.email,
+    name: user.full_name ?? user.name ?? "Guest User",
+    email: user.email,
+    role: user.role ?? "employee",
+    avatar: user.avatar ?? "",
+  });
+
+  const normalizedUsers = users.map(normalizeUser);
+  const [activeUser, setActiveUser] = useState(normalizedUsers[0]);
+
+  const handleLogout = () => {
+    startLogout(async () => {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+
+      if (!response.ok) return;
+
+      router.replace("/auth/v2/login");
+      router.refresh();
+    });
+  };
   if (!activeUser) {
     return null;
   }
@@ -41,7 +64,7 @@ export function AccountSwitcher({
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-56 space-y-1 rounded-lg" side="bottom" align="end" sideOffset={4}>
-        {users.map((user) => (
+        {normalizedUsers.map((user) => (
           <DropdownMenuItem
             key={user.email}
             className={cn("p-0", user.id === activeUser.id && "bg-accent/50")}
@@ -69,24 +92,11 @@ export function AccountSwitcher({
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <BadgeCheck />
-            Account
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <CreditCard />
-            Billing
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Bell />
-            Notifications
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem disabled={isLoggingOut} onClick={handleLogout}>
           <LogOut />
-          Log out
+          {isLoggingOut ? "Logging out..." : "Log out"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
